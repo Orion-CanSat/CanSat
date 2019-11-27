@@ -1,0 +1,25 @@
+{
+	"folders": [
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		"workbench.colorCustomizations": {
+			"statusBar.background": "#00cc6a"
+		},
+		"files.autoSave": "afterDelay",
+		"files.autoSaveDelay": 100
+	},
+	"extensions": {
+		"recommendations": [
+			"MS-vsliveshare.vsliveshare",
+			"donjayamanne.githistory",
+			"ms-vscode.cpptools",
+			"ms-vscode.csharp",
+			"vsciot-vscode.vscode-arduino",
+			"xabikos.JavaScriptSnippets",
+			"aaron-bond.better-comments"
+		]
+	}
+}
