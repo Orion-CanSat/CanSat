@@ -21,20 +21,7 @@
  */
 
 
-//// 31B832DAF123FA5B940BC900B09993EE                                                           // Check-sum md5 of the first include
-
-
-#include <Adafruit_BME280.h>
-#include <Adafruit_BNO055.h>
-#include <RH_RF95.h>
-#include <Adafruit_TSL2591.h>
-
-#include <SD.h>
-
-#include <SPI.h>
-#include <Wire.h>
-
-#include <utility/imumaths.h>
+//// BDE37F24A7DB9C64B9F0796558E8D735                                                           // Check-sum md5 of the first include
 
 
 #pragma region SENSOR_REGION
@@ -43,6 +30,38 @@
 //// #define BME
 //// #define BNO
 //// #define TSL
+//// #define GPS
+#pragma endregion
+
+#pragma region INCLUSE_REGION
+#if defined(RFM)
+        #include <RH_RF95.h>
+#endif
+
+#if defined(SDC)
+        #include <SD.h>
+#endif
+
+#if defined(BME)
+        #include <Adafruit_BME280.h>
+#endif
+
+#if defined(BNO)
+        #include <Adafruit_BNO055.h>
+        #include <utility/imumaths.h>
+#endif
+
+#if defined(TSL)
+        #include <Adafruit_TSL2591.h>
+#endif
+
+#if defined(GPS)
+        #include <Adafruit_GPS.h>
+#endif
+
+#include <SPI.h>
+#include <Wire.h>
+#include <SoftwareSerial.h>
 #pragma endregion
 
 
@@ -194,9 +213,13 @@
         bool Bme_init_state = false;
 #endif
 
+#if defined(TSL)
+        bool Tsl_init_state = false;
+#endif
+
                                                                                                 // Beware: Must introduce an init
-#if defined(TSL)                                                                                // function for each variable or
-        bool Tsl_init_state = false;                                                            // else the module will not work
+#if defined(GPS)                                                                                // function for each variable or
+        bool Gps_init_state = false;                                                            // else the module will not work
 #endif                                                                                          // by default 
 #pragma endregion
 
@@ -216,6 +239,12 @@
 
 #if defined (TSL)
         Adafruit_TSL2591 tsl = Adafruit_TSL2591(2591);
+#endif
+
+#if defined(GPS)
+        #define GPSSerial Serial3
+        Adafruit_GPS gps(&GPSSerial);
+        #define GPSECHO false
 #endif
 #pragma endregion
 
@@ -287,14 +316,22 @@ void setup() {
         #endif
 
         #if defined(RFM)
-                sprintf(radiopacket, "%s\0", (Rfm_init_state)? "RFM Init complete": "RFM Init failed");
+                sprintf(radiopacket,
+                        "%s\0",
+                        (Rfm_init_state)? "RFM Init complete": "RFM Init failed");
+
                 SaveData();
+
                 radiopacket[0] = "\0";
         #endif
 
         #if defined(SDC)
-                sprintf(radiopacket, "%s\0", (Sdc_init_state)? "SDC Init complete": "SDC Init failed");
+                sprintf(radiopacket,
+                        "%s\0", (Sdc_init_state)?
+                        "SDC Init complete": "SDC Init failed");
+
                 SaveData();
+        
                 radiopacket[0] = "\0";
         #endif
 
@@ -325,6 +362,15 @@ void setup() {
                 }
         #endif
 
+        #if defined(GPS)
+                if (Gps_init_state = waitTimeout(InitGPS, MAX_TIMEOUT_FUNCTION)) {
+                  
+                }
+                else {
+                  
+                }
+        #endif
+
         sprintf(radiopacket, "\0");
 }
 
@@ -336,7 +382,9 @@ void loop() {
                 buzzer_timer = millis();
         }
 
-        sprintf(radiopacket + strlen(radiopacket), "%lu ", millis());
+        sprintf(radiopacket + strlen(radiopacket),
+                "%lu ",
+                millis());
 
         #if defined(BME)                                                                        // Check if BME sensor is
                                                                                                 // defined to be used
@@ -350,8 +398,12 @@ void loop() {
                                                                                                 // defined to be used
                 UseTSL();                                                                       // Gather data from TSL
         #endif
+        #if defined(GPS)                                                                        // Check if GPS is
+                                                                                                // defined to be used
+                UseGPS();                                                                       // Gather data from GPS
+        #endif
 
-        SaveData();
+        SaveData();                                                                             // Save and Send data
         
         radiopacket[0] = '\0';                                                                  // Empty data
 }
@@ -395,13 +447,9 @@ uint32_t FindSize(char* str) {
 
                         rfm.setPromiscuous(false);                                              // Allow / Disallow communication outside specified Nodes
 
-                        //sprintf(radiopacket, "RFM Init complete\0");                            // Print that RF module initialized successfully
-                        //SaveData();
                         return true;
                 }
                 else {
-                        //sprintf(radiopacket, "RFM Init failed\0");                              // Print that RF module did not initialize successfully
-                        //SaveData();
                         return false;
                 }
         }
@@ -416,14 +464,11 @@ uint32_t FindSize(char* str) {
          * !            module used
          */
         bool InitSDC() {
-                if (SD.begin(SDC_CS)) {                                                         // SD module/card initialized successfully
-                        //sprintf(radiopacket, "SD Init complete\0");                             // Print that the SD module/card initialized successfully
-                        //SaveData();
+
+                if (SD.begin(SDC_CS)) {
                         return true;
                 }
-                else {                                                                          // SD module/card did not initialize successfully
-                        //sprintf(radiopacket, "SD Init failed\0");                               // Print that the SD module/card did not initialize successfully
-                        //SaveData();
+                else {
                         return false;
                 }
         }
@@ -437,13 +482,17 @@ uint32_t FindSize(char* str) {
          */
         bool InitBME() {
                 if (bme.begin()) {                                                              // BNO  initialized successfully
-                        sprintf(radiopacket, "BME Init complete\0");                            // Print that BNO did initialize
-                        SaveData();
+                        sprintf(radiopacket,                                                    // Print that BNO did initialize
+                                "BME Init complete\0");
+
+                        SaveData();                                                             // Save and Send data
                         return true;
                 }
                 else {                                                                          // BNO did not initialize successfully
-                        sprintf(radiopacket, "BME Init faliled\0");                             // Print that BME did not initialize
-                        SaveData();
+                        sprintf(radiopacket,                                                    // Print that BME did not initialize
+                                "BME Init faliled\0");
+
+                        SaveData();                                                             // Save and Send data
                         return false;
                 }
         }
@@ -458,13 +507,17 @@ uint32_t FindSize(char* str) {
          */
         bool InitBNO() {
                 if (bno.begin()) {                                                              // BNO initialized successfully
-                        sprintf(radiopacket, "BNO Init complete\0");                            // Print that BNO did initialize
-                        SaveData();
+                        sprintf(radiopacket,                                                    // Print that BNO did initialize
+                                "BNO Init complete\0");
+
+                        SaveData();                                                             // Save and Send data
                         return true;
                 }
                 else {                                                                          // BNO did not initialize successfully
-                        sprintf(radiopacket, "BNO Init failed\0");                              // Print that BNO did not initialize
-                        SaveData();
+                        sprintf(radiopacket,                                                    // Print that BNO did not initialize
+                                "BNO Init failed\0");
+
+                        SaveData();                                                             // Save and Send data
                         return false;
                 }
         }
@@ -479,8 +532,10 @@ uint32_t FindSize(char* str) {
          */
         bool InitTSL() {
                 if (tsl.begin()) {                                                              // TSL initialized successfully
-                        sprintf(radiopacket, "TSL Init complete\0");                            // Print that TSL did initialize
-                        SaveData();
+                        sprintf(radiopacket,                                                    // Print that TSL did initialize
+                                "TSL Init complete\0");
+
+                        SaveData();                                                             // Save and Send data
 
                         tsl.setGain((tsl2591Gain_t)TSL_GAIN);                                   // Set TSL's Brightness settings
                         tsl.setTiming(TSL_TIMMING);                                             // !Warning!    The Dimmer the environment
@@ -490,10 +545,36 @@ uint32_t FindSize(char* str) {
                         return true;
                 }
                 else {                                                                          // TSL did not initialize successfully
-                        sprintf(radiopacket, "TSL Init failed\0");                                // Print that TSL did not initialize
-                        SaveData();
+                        sprintf(radiopacket,                                                    // Print that TSL did not initialize
+                                "TSL Init failed\0");
+
+                        SaveData();                                                             // Save and Send Data
                         return true;
                 }
+        }
+#endif
+
+#if defined(GPS)
+        /**
+         * Initialize the UART GPS
+         * 
+         * !Warning!    Might end in an endless condition
+         * !            Depends on microprocessor and wiring
+         */
+        bool InitGPS() {
+                gps.begin(9600);
+                gps.sendCommand(PMTK_SET_NMEA_OUTPUT_RMCGGA);
+                gps.sendCommand(PMTK_SET_NMEA_UPDATE_2HZ);
+                gps.sendCommand(PGCMD_ANTENNA);
+                delay(1000);
+                GPSSerial.println(PMTK_Q_RELEASE);
+
+                sprintf(radiopacket,
+                        "GPS Init complete\0");
+
+                SaveData();                                                                     // Save and Send data
+                return true;
+
         }
 #endif
 #pragma endregion
@@ -636,6 +717,68 @@ uint32_t FindSize(char* str) {
                         fullLuminosity);                                                        // Full luminosity
         }
 #endif
+
+#if defined(GPS)
+        /**
+         * Collect GPS data
+         * 
+         * !Warning!    GPS must be initialized
+         * 
+         * ? Output Format:
+         * ? (latitude), (longitude), (altitude), (speed)
+         */
+        void UseGPS() {
+                if (!Gps_init_state) {
+                        sprintf(radiopacket + strlen(radiopacket),
+                                " + + +");
+                        return;
+                }
+                if (gps.newNMEAreceived()) {
+                        if (!gps.parse(gps.lastNMEA())) {
+                                return;
+                        }
+                }
+
+                char gpsPacket[200] = "\0";
+
+                sprintf(gpsPacket,
+                        "Time: %d:%d:%d\nDate: %d/%d/20%d\nFix: %d\nQuality: %d\0",
+                        (int)gps.hour,
+                        (int)gps.minute,
+                        (int)gps.seconds,
+                        (int)gps.day,
+                        (int)gps.month,
+                        (int)gps.year,
+                        (int)gps.fix,
+                        (int)gps.fixquality);
+  
+                if (gps.fix) {
+                        float latitude = gps.latitude * ((gps.lat == 'N')? 1.0 : -1.0);
+                        float longtitude = gps.longitude * ((gps.lon == "E")? 1.0 : -1.0);
+
+                        sprintf(gpsPacket + strlen(gpsPacket),
+                                "\nLocation: %.4f, %.4f, %.4f\nSpeed: %d\nSatellites: %d\0",
+                                latitude,
+                                longtitude,
+                                gps.altitude,
+                                gps.speed,
+                                gps.satellites);
+
+                        sprintf(radiopacket + strlen(radiopacket),
+                                " %.4f %.4f %.4f %.2f",
+                                latitude,
+                                longtitude,
+                                gps.altitude,
+                                gps.speed);
+                }
+                else {
+                        sprintf(radiopacket + strlen(radiopacket),
+                                " + + +");
+                }
+
+                Serial.println(gpsPacket);
+        }
+#endif
 #pragma endregion
 
 
@@ -661,9 +804,9 @@ void SaveData() {
 
 #if defined(RFM)
         if (Rfm_init_state) {
+                rfm.setModeRx();
                 rfm.send(radiopacket, strlen(radiopacket) + 1);
                 rfm.waitPacketSent();
-                rfm.setModeRx();
         }
 #endif
 }
