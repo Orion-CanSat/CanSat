@@ -21,11 +21,12 @@
  */
 
 
-//// 1FCA63E0834E0EC3ACC6E45FBD08C948                                                           // Check-sum md5 of the first include
+//// F1993976A2FC0245E57DC4F50101799E                                                           // Check-sum md5 of the first include
 
 
 #include <Adafruit_BME280.h>
 #include <Adafruit_BNO055.h>
+#include <RH_RF95.h>
 #include <Adafruit_TSL2591.h>
 
 #include <SD.h>
@@ -37,6 +38,7 @@
 
 
 #pragma region SENSOR_REGION
+//// #define RFM
 //// #define SDC
 //// #define BME
 //// #define BNO
@@ -73,7 +75,7 @@
 
 
 #pragma region DEBUG_REGION
-//// #define DEBUG_MODE                                                                         // Define DEBUG MODE
+#define DEBUG_MODE                                                                              // Define DEBUG MODE
                                                                                                 // MUST be undefined or removed
                                                                                                 // before launch
 #if defined(DEBUG_MODE)
@@ -114,7 +116,7 @@
  * Will be used for setup purposes
  */
 #pragma region CONSTANTS_REGION
-#define RF_FREQ 433.0                                                                           // RF Frequency for the
+#define RFM_FREQ 433.0                                                                          // RF Frequency for the
                                                                                                 // RFM95 or 9x or 65
                                                                                                 // !Warning!	Base's Frequency.
                                                                                                 // Must be set to the same
@@ -122,18 +124,20 @@
                                                                                                 // TODO: Change it to a different Frequency
 
 
-#define RF_RST 9                                                                                // Reset pin number
+#define RFM_RST 9                                                                               // Reset pin number
 
-#define RF_INT 2                                                                                // RF Interrupt pin
+#define RFM_INT 2                                                                               // RF Interrupt pin
                                                                                                 // Will Interrupt program'same
                                                                                                 // execution if pin pulled HIGH
                                                                                                 // 
                                                                                                 // !Warning!	Must be Interrupt 
                                                                                                 // !            Friendly.
 
-#define RF_CS 9                                                                                 // RF's Chip Select pin
+#define RFM_CS 9                                                                                // RF's Chip Select pin
                                                                                                 // Used for the SPI Protocol
 
+#define CANSAT_NODE_ADDRESS 0x01
+#define GROUND_NODE_ADDRESS 0x02
 
 #define SDC_CS BUILTIN_SDCARD                                                                   // SD card's Chip Select pin
                                                                                                 // Used for the SPI Protocol
@@ -165,10 +169,14 @@
 #pragma endregion
 
 
-#pragma region MODULE_STATE_REGION 
-#if defined(SDC)                                                                                // Declaring all initialization
-        bool Sdc_init_state = false;                                                            // status variables for GLOBAL
+#pragma region MODULE_STATE_REGION
+#if defined(RFM)                                                                                // Declaring all initialization
+        bool Rfm_init_state = false;                                                            // status variables for GLOBAL
 #endif                                                                                          // use in the functions
+
+#if defined(SDC)
+        bool Sdc_init_state = false;
+#endif
 
 #if defined(BNO)
         bool Bno_init_state = false;
@@ -185,6 +193,10 @@
 
 
 #pragma region MODULE_REGION
+#if defined(RFM)
+        RH_RF95 rfm(RFM_CS, RFM_INT);
+#endif
+
 #if defined(BNO)
         Adafruit_BNO055 bno = Adafruit_BNO055(55);
 #endif
@@ -232,12 +244,21 @@ void setup() {
         SPI.begin();                                                                            // Start SPI Protocol
 
         digitalWrite(SDC_CS, HIGH);                                                             // De-activates SD SPI
-        digitalWrite(RF_CS, HIGH);                                                              // De-activates RF SPI
+        digitalWrite(RFM_CS, HIGH);                                                             // De-activates RFM SPI
         digitalWrite(CAM_CS, HIGH);                                                             // De-activates Camera SPI
 
         delay(INIT_PAUSE);
 
-        #if defined (SDC)
+        #if defined(RFM)
+                if (Rfm_init_state = waitTimeout(InitRFM, MAX_TIMEOUT_FUNCTION)) {
+
+                }
+                else {
+
+                }
+        #endif
+
+        #if defined(SDC)
                 if (Sdc_init_state = waitTimeout(InitSDC, MAX_TIMEOUT_FUNCTION)) {
 
                 }
@@ -310,6 +331,37 @@ uint32_t FindSize(char* str) {
 
 
 #pragma region INITIALIZATION_REGION
+#if defined(RFM)
+        /**
+         * Initialize the RF module
+         * 
+         * !Warning!    Might end in an endless condition
+         * !            Depends on microprocessor and
+         * !            connections made.
+         */
+        bool InitRFM() {
+                digitalWrite(RFM_RST, LOW);
+                delay(100);
+                digitalWrite(RFM_RST, HIGH);
+                delay(100);
+
+                if (rfm.init() && rfm.setFrequency(RFM_FREQ)) {
+                        rfm.setTxPower(23, false);
+                        rfm.setThisAddress(CANSAT_NODE_ADDRESS);
+                        rfm.setHeaderFrom(CANSAT_NODE_ADDRESS);
+                        rfm.setHeaderTo(GROUND_NODE_ADDRESS);
+                        rfm.setPromiscuous(false);
+                        DEBUGLN("RFM Init complete");
+                        return true;
+                }
+                else {
+                        DEBUGLN("RFM Init failed");
+
+                        return false;
+                }
+        }
+#endif
+
 #if defined(SDC)
         /**
          * initialize the SD card
