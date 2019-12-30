@@ -21,7 +21,7 @@
  */
 
 
-//// F1993976A2FC0245E57DC4F50101799E                                                           // Check-sum md5 of the first include
+//// 31B832DAF123FA5B940BC900B09993EE                                                           // Check-sum md5 of the first include
 
 
 #include <Adafruit_BME280.h>
@@ -55,22 +55,23 @@
 
 // !Warning!    Do not modify from here
 // !            till end of region
-#if defined(BRIGHTNESS_TSL_MAX)
-        #define TSL_GAIN 0x00
-        #define TSL_TIMMING 0x00
-#elif defined(BRIGHTNESS_TSL_HIGH)
-        #define TSL_GAIN 0x10
-        #define TSL_TIMMING 0x02
-#elif defined(BRIGHTNESS_TSL_MEDIUM)
-        #define TSL_GAIN 0x20
-        #define TSL_TIMMING 0x04
-#elif defined(BRIGHTNESS_TSL_LOW)
-        #define TSL_GAIN 0x30
-        #define TSL_TIMMING 0x05
-#elif defined(TSL)
-        #error Please select TSL Brightness from BRIGHTNESS_TSL_MODULE_REGION
+#if defined(TSL)
+        #if defined(BRIGHTNESS_TSL_MAX)
+                #define TSL_GAIN 0x00
+                #define TSL_TIMMING 0x00
+        #elif defined(BRIGHTNESS_TSL_HIGH)
+                #define TSL_GAIN 0x10
+                #define TSL_TIMMING 0x02
+        #elif defined(BRIGHTNESS_TSL_MEDIUM)
+                #define TSL_GAIN 0x20
+                #define TSL_TIMMING 0x04
+        #elif defined(BRIGHTNESS_TSL_LOW)
+                #define TSL_GAIN 0x30
+                #define TSL_TIMMING 0x05
+        #else
+                #error Please select TSL Brightness from BRIGHTNESS_TSL_MODULE_REGION
+        #endif
 #endif
-
 #pragma endregion
 
 
@@ -116,15 +117,20 @@
  * Will be used for setup purposes
  */
 #pragma region CONSTANTS_REGION
-#define RFM_FREQ 433.0                                                                          // RF Frequency for the
-                                                                                                // RFM95 or 9x or 65
+#define MODE 0x00                                                                               // 0x00 for CanSat and 0x01 for GroundStation
+                                                                                                // Will change order of execution of the SaveData
+                                                                                                // function. If 0x00, Program will gather data and send them
+                                                                                                // to Ground. if 0x00, Program will wait for data and store them.
+                                                                                                // !Warning!    If deleted, program will not work. 
+
+#define RFM_FREQ 433.0                                                                          // RF Frequency for the RFM9x or 65
                                                                                                 // !Warning!	Base's Frequency.
                                                                                                 // Must be set to the same
                                                                                                 // Frequency
                                                                                                 // TODO: Change it to a different Frequency
 
 
-#define RFM_RST 9                                                                               // Reset pin number
+#define RFM_RST 3                                                                               // Reset pin number
 
 #define RFM_INT 2                                                                               // RF Interrupt pin
                                                                                                 // Will Interrupt program'same
@@ -166,6 +172,8 @@
 #endif
 
 #define SEA_LEVEL_PRESSURE_REF 1013.25                                                          // Air pressure at sea level
+
+#define BUZZER_PIN 4
 #pragma endregion
 
 
@@ -185,10 +193,11 @@
 #if defined(BME)
         bool Bme_init_state = false;
 #endif
+
                                                                                                 // Beware: Must introduce an init
 #if defined(TSL)                                                                                // function for each variable or
         bool Tsl_init_state = false;                                                            // else the module will not work
-#endif                                                                                          // by default                                                                 
+#endif                                                                                          // by default 
 #pragma endregion
 
 
@@ -213,6 +222,9 @@
 
 #pragma region VARIABLE_REGION
 char radiopacket[300];
+File dataFile;
+bool buzzer_state;
+unsigned long buzzer_timer;
 #pragma endregion
 
 
@@ -231,9 +243,13 @@ bool waitTimeout(bool(*func)(), uint32_t dur) {
 }
 
 void setup() {
-        pinMode(SCK_PIN, OUTPUT);                                                               // Set the SPI Clock to OUTPUT
+        pinMode(SCK_PIN, OUTPUT);                                                               // Set the SPI Clock to Output
         pinMode(MOSI_PIN, OUTPUT);                                                              // Set the MOSI to Output
         pinMode(MISO_PIN, OUTPUT);                                                              // Set the MISO to Output
+        pinMode(RFM_RST, OUTPUT);                                                               // Set the RFM Reset pin to Output
+        pinMode(RFM_CS, OUTPUT);                                                                // Set the RFM Chip Select pin to Output
+        pinMode(RFM_INT, INPUT);                                                                // Set the RFM Interrupt pin to Input
+        pinMode(BUZZER_PIN, OUTPUT);
 
         #if (defined DEBUG_MODE)
                 Serial.begin(11500);
@@ -246,6 +262,9 @@ void setup() {
         digitalWrite(SDC_CS, HIGH);                                                             // De-activates SD SPI
         digitalWrite(RFM_CS, HIGH);                                                             // De-activates RFM SPI
         digitalWrite(CAM_CS, HIGH);                                                             // De-activates Camera SPI
+        digitalWrite(BUZZER_PIN, LOW);
+
+        buzzer_state = false;
 
         delay(INIT_PAUSE);
 
@@ -260,11 +279,23 @@ void setup() {
 
         #if defined(SDC)
                 if (Sdc_init_state = waitTimeout(InitSDC, MAX_TIMEOUT_FUNCTION)) {
-
+                        SD.remove("data.txt");
                 }
                 else {
 
                 }
+        #endif
+
+        #if defined(RFM)
+                sprintf(radiopacket, "%s\0", (Rfm_init_state)? "RFM Init complete": "RFM Init failed");
+                SaveData();
+                radiopacket[0] = "\0";
+        #endif
+
+        #if defined(SDC)
+                sprintf(radiopacket, "%s\0", (Sdc_init_state)? "SDC Init complete": "SDC Init failed");
+                SaveData();
+                radiopacket[0] = "\0";
         #endif
 
         #if defined(BME)
@@ -293,9 +324,20 @@ void setup() {
 
                 }
         #endif
+
+        sprintf(radiopacket, "\0");
 }
 
 void loop() {
+
+        if (buzzer_timer + 1000 < millis()) {
+                digitalWrite(BUZZER_PIN, !buzzer_state);
+                buzzer_state = !buzzer_state;
+                buzzer_timer = millis();
+        }
+
+        sprintf(radiopacket + strlen(radiopacket), "%lu ", millis());
+
         #if defined(BME)                                                                        // Check if BME sensor is
                                                                                                 // defined to be used
                 UseBME();                                                                       // Gather data from BME
@@ -308,11 +350,9 @@ void loop() {
                                                                                                 // defined to be used
                 UseTSL();                                                                       // Gather data from TSL
         #endif
-        
-        // TODO: Move to Save Data function
-        DEBUGLN(radiopacket);                                                                   // Print to screen if DEBUG is
-                                                                                                // defined data collected
 
+        SaveData();
+        
         radiopacket[0] = '\0';                                                                  // Empty data
 }
 
@@ -340,23 +380,28 @@ uint32_t FindSize(char* str) {
          * !            connections made.
          */
         bool InitRFM() {
-                digitalWrite(RFM_RST, LOW);
-                delay(100);
+                digitalWrite(RFM_RST, LOW);                                                     // Reset the RFM9x Module. Might not work if not
+                delay(100);                                                                     // Reset.
                 digitalWrite(RFM_RST, HIGH);
                 delay(100);
 
-                if (rfm.init() && rfm.setFrequency(RFM_FREQ)) {
-                        rfm.setTxPower(23, false);
-                        rfm.setThisAddress(CANSAT_NODE_ADDRESS);
-                        rfm.setHeaderFrom(CANSAT_NODE_ADDRESS);
+                if (rfm.init() && rfm.setFrequency(RFM_FREQ)) {                                 // Check if RFM initialized and successfully set Frequency.
+
+                        rfm.setTxPower(23, false);                                              // Set Transmit Power to x db for one meter.
+
+                        rfm.setThisAddress(CANSAT_NODE_ADDRESS);                                // Used to create an end to end communication. Will not allow
+                        rfm.setHeaderFrom(CANSAT_NODE_ADDRESS);                                 // for communication outside specified Nodes
                         rfm.setHeaderTo(GROUND_NODE_ADDRESS);
-                        rfm.setPromiscuous(false);
-                        DEBUGLN("RFM Init complete");
+
+                        rfm.setPromiscuous(false);                                              // Allow / Disallow communication outside specified Nodes
+
+                        //sprintf(radiopacket, "RFM Init complete\0");                            // Print that RF module initialized successfully
+                        //SaveData();
                         return true;
                 }
                 else {
-                        DEBUGLN("RFM Init failed");
-
+                        //sprintf(radiopacket, "RFM Init failed\0");                              // Print that RF module did not initialize successfully
+                        //SaveData();
                         return false;
                 }
         }
@@ -372,13 +417,13 @@ uint32_t FindSize(char* str) {
          */
         bool InitSDC() {
                 if (SD.begin(SDC_CS)) {                                                         // SD module/card initialized successfully
-                        DEBUGLN("SD Init complete");                                            // Print that the SD module/card did
-                                                                                                // initialize successfully
+                        //sprintf(radiopacket, "SD Init complete\0");                             // Print that the SD module/card initialized successfully
+                        //SaveData();
                         return true;
                 }
                 else {                                                                          // SD module/card did not initialize successfully
-                        DEBUGLN("SD Init failed");                                              // Print that the SD module/card did
-                                                                                                // not initialize successfully
+                        //sprintf(radiopacket, "SD Init failed\0");                               // Print that the SD module/card did not initialize successfully
+                        //SaveData();
                         return false;
                 }
         }
@@ -392,11 +437,13 @@ uint32_t FindSize(char* str) {
          */
         bool InitBME() {
                 if (bme.begin()) {                                                              // BNO  initialized successfully
-                        DEBUGLN("BME Init complete");                                           // Print that BNO did initialize
+                        sprintf(radiopacket, "BME Init complete\0");                            // Print that BNO did initialize
+                        SaveData();
                         return true;
                 }
                 else {                                                                          // BNO did not initialize successfully
-                        DEBUGLN("BME Init faliled");                                            // Print that BME did not initialize
+                        sprintf(radiopacket, "BME Init faliled\0");                             // Print that BME did not initialize
+                        SaveData();
                         return false;
                 }
         }
@@ -411,11 +458,13 @@ uint32_t FindSize(char* str) {
          */
         bool InitBNO() {
                 if (bno.begin()) {                                                              // BNO initialized successfully
-                        DEBUGLN("BNO Init complete");                                           // Print that BNO did initialize
+                        sprintf(radiopacket, "BNO Init complete\0");                            // Print that BNO did initialize
+                        SaveData();
                         return true;
                 }
                 else {                                                                          // BNO did not initialize successfully
-                        DEBUGLN("BNO Init failed");                                             // Print that BNO did not initialize
+                        sprintf(radiopacket, "BNO Init failed\0");                              // Print that BNO did not initialize
+                        SaveData();
                         return false;
                 }
         }
@@ -430,7 +479,8 @@ uint32_t FindSize(char* str) {
          */
         bool InitTSL() {
                 if (tsl.begin()) {                                                              // TSL initialized successfully
-                        DEBUGLN("TSL Init complete");                                           // Print that TSL did initialize
+                        sprintf(radiopacket, "TSL Init complete\0");                            // Print that TSL did initialize
+                        SaveData();
 
                         tsl.setGain((tsl2591Gain_t)TSL_GAIN);                                   // Set TSL's Brightness settings
                         tsl.setTiming(TSL_TIMMING);                                             // !Warning!    The Dimmer the environment
@@ -440,7 +490,8 @@ uint32_t FindSize(char* str) {
                         return true;
                 }
                 else {                                                                          // TSL did not initialize successfully
-                        DEBUGLN("TSL Init failed");                                             // Print that TSL did not initialize
+                        sprintf(radiopacket, "TSL Init failed\0");                                // Print that TSL did not initialize
+                        SaveData();
                         return true;
                 }
         }
@@ -504,17 +555,16 @@ uint32_t FindSize(char* str) {
                         uint8_t system, gyroCal, accelCal, magnCal = 0;                         // Define Calibration variables
                         bno.getCalibration(&system, &gyroCal, &accelCal, &magnCal);             // Get Calibration variables from bno
 
-                        DEBUG(F("System Calibration = "));
-                        DEBUGLN(system, DEC);                                                   // Get Decimal value of system variable
+                        sprintf(radiopacket, "System Calibration = %d\0", system);                // Get Decimal value of system variable
+                        SaveData();
 
-                        DEBUG(F("Gyro Calibration = "));
-                        DEBUGLN(gyroCal, DEC);                                                  // Get Decimal value of gyroscopic calibration
+                        sprintf(radiopacket, "Gyro Calibration = %d\0", gyroCal);                 // Get Decimal value of gyroscopic calibration                                                 
 
-                        DEBUG(F("Acceleration Calibration = "));
-                        DEBUGLN(accelCal);                                                      // Get Decimal value of accelerometer calibration
+                        sprintf(radiopacket, "Acceleration Calibration = %d\0", accelCal);        // Get Decimal value of accelerometer calibration
+                        SaveData();
 
-                        DEBUG(F("Magnetic Calibration = "));
-                        DEBUGLN(magnCal);                                                       // Get Decimal value of magnetic calibration
+                        sprintf(radiopacket, "Magnetic Calibration = %d\0", magnCal);             // Get Decimal value of magnetic calibration
+                        SaveData();
                 #endif
 
                 imu::Vector<3> euler = bno.getVector(Adafruit_BNO055::VECTOR_EULER);            // Axis–angle representation
@@ -586,4 +636,36 @@ uint32_t FindSize(char* str) {
                         fullLuminosity);                                                        // Full luminosity
         }
 #endif
+#pragma endregion
+
+
+#pragma region DATA_HANDLER_REGION
+
+void SaveData() {
+        DEBUGLN(radiopacket);
+
+#if defined(SDC)
+        if (Sdc_init_state) {
+                dataFile = SD.open("data.txt", FILE_WRITE);
+
+                if (!dataFile) {
+                        DEBUGLN("File opening failed");
+                }
+                else {
+                        dataFile.println(radiopacket);
+
+                        dataFile.close();
+                }
+        }
+#endif
+
+#if defined(RFM)
+        if (Rfm_init_state) {
+                rfm.send(radiopacket, strlen(radiopacket) + 1);
+                rfm.waitPacketSent();
+                rfm.setModeRx();
+        }
+#endif
+}
+
 #pragma endregion
