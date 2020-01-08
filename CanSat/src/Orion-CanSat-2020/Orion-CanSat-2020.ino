@@ -21,7 +21,7 @@
  */
 
 
-//// 30A3D287D28CDD8AED31BBD26F3C9011                                                           // Check-sum md5 of the first include
+//// 992DC9E2FC6CAB471FAB75ADDF22AA73                                                           // Check-sum md5 of the first include
 
 
 #pragma region SENSOR_REGION
@@ -164,8 +164,9 @@
 #define CANSAT_NODE_ADDRESS 0x01
 #define GROUND_NODE_ADDRESS 0x02
 
-#define SDC_CS BUILTIN_SDCARD                                                                   // SD card's Chip Select pin
-                                                                                                // Used for the SPI Protocol
+#if defined(SDC)
+        #define SDC_CS BUILTIN_SDCARD                                                           // SD card's Chip Select pin
+#endif                                                                                          // Used for the SPI Protocol
 
 #define CAM_CS 20                                                                               // Arducam's Chip Select pin
                                                                                                 // Used for the SPI Protocol
@@ -251,7 +252,9 @@
 
 #pragma region VARIABLE_REGION
 char radiopacket[300];
-File dataFile;
+#if defined(SDC)
+        File dataFile;
+#endif
 bool buzzer_state;
 unsigned long buzzer_timer;
 #pragma endregion
@@ -288,7 +291,9 @@ void setup() {
         Wire.begin();                                                                           // Start I2C Protocol
         SPI.begin();                                                                            // Start SPI Protocol
 
+#if defined(SDC)
         digitalWrite(SDC_CS, HIGH);                                                             // De-activates SD SPI
+#endif
         digitalWrite(RFM_CS, HIGH);                                                             // De-activates RFM SPI
         digitalWrite(CAM_CS, HIGH);                                                             // De-activates Camera SPI
         digitalWrite(BUZZER_PIN, LOW);
@@ -424,7 +429,7 @@ uint32_t FindSize(char* str) {
 }
 
 void PrepareHeader() {
-        spirntf(radiopacket, "%s%s%s%s",
+        sprintf(radiopacket, "%s%s%s%s",
         #if defined(BME)
                 "Temperature Pressure Humidity Altitude ",
         #else
