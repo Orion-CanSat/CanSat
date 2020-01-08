@@ -21,7 +21,7 @@
  */
 
 
-//// BDE37F24A7DB9C64B9F0796558E8D735                                                           // Check-sum md5 of the first include
+//// 30A3D287D28CDD8AED31BBD26F3C9011                                                           // Check-sum md5 of the first include
 
 
 #pragma region SENSOR_REGION
@@ -371,6 +371,8 @@ void setup() {
                 }
         #endif
 
+        PrepareHeader();                                                                        // Send how data fill be formatted
+
         sprintf(radiopacket, "\0");
 }
 
@@ -421,6 +423,37 @@ uint32_t FindSize(char* str) {
         return size;                                                                            // Return last index
 }
 
+void PrepareHeader() {
+        spirntf(radiopacket, "%s%s%s%s",
+        #if defined(BME)
+                "Temperature Pressure Humidity Altitude ",
+        #else
+                "",
+        #endif
+
+
+        #if defined(BNO)
+                "rotational_angle_x y z angular_velocity_x y z gravitational_acceleration_x y z linear_acceleration_x y z}) magnetism_x y z ",
+        #else
+                "",
+        #endif
+
+
+        #if defined(TSL)
+                "infrared_luminosity full_luminosity ",
+        #else
+                "",
+        #endif
+
+
+        #if defined(GPS)
+                "latitude longitude altitude speed");
+        #else
+                "");
+        #endif
+
+        SaveData();
+}
 
 #pragma region INITIALIZATION_REGION
 #if defined(RFM)
