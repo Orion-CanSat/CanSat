@@ -21,7 +21,7 @@
  */
 
 
-//// 992DC9E2FC6CAB471FAB75ADDF22AA73                                                           // Check-sum md5 of the first include
+//// 9EC9C62DA9C766DCD4F7691FFD3D9AF2                                                           // Check-sum md5 of the first include
 
 
 #pragma region SENSOR_REGION
@@ -198,6 +198,7 @@
 
 
 #pragma region MODULE_STATE_REGION
+bool Bzr_init_state = false;
 #if defined(RFM)                                                                                // Declaring all initialization
         bool Rfm_init_state = false;                                                            // status variables for GLOBAL
 #endif                                                                                          // use in the functions
@@ -252,6 +253,7 @@
 
 #pragma region VARIABLE_REGION
 char radiopacket[300];
+char* command;
 #if defined(SDC)
         File dataFile;
 #endif
@@ -383,7 +385,7 @@ void setup() {
 
 void loop() {
 
-        if (buzzer_timer + 1000 < millis()) {
+        if (millis() - buzzer_timer > 1000 && Bzr_init_state) {
                 digitalWrite(BUZZER_PIN, !buzzer_state);
                 buzzer_state = !buzzer_state;
                 buzzer_timer = millis();
@@ -406,6 +408,7 @@ void loop() {
                 UseTSL();                                                                       // Gather data from TSL
         #endif
         #if defined(GPS)                                                                        // Check if GPS is
+                for (int i = 0; i < 50; i++) gps.read();
                                                                                                 // defined to be used
                 UseGPS();                                                                       // Gather data from GPS
         #endif
@@ -633,7 +636,7 @@ void PrepareHeader() {
         void UseBME() {
                 if (!Bme_init_state) {
                         sprintf(radiopacket + strlen(radiopacket),                              // Add to radiopacket
-                                "+ + + + ");                                                    // 4 pluses - no values
+                                "+ + + +");                                                    // 4 pluses - no values
                         return;
                 }
 
@@ -664,7 +667,7 @@ void PrepareHeader() {
         void UseBNO() {
                 if (!Bno_init_state) {
                         sprintf(radiopacket + strlen(radiopacket),                              // Add to radiopacket
-                        "+ + + + + + + + + + + + + + + ");                                      // 15 pluses - no values
+                        " + + + + + + + + + + + + + + + ");                                      // 15 pluses - no values
                         return;
                 }
 
@@ -689,7 +692,7 @@ void PrepareHeader() {
                 imu::Vector<3> euler = bno.getVector(Adafruit_BNO055::VECTOR_EULER);            // Axis–angle representation
                                                                                                 // * Degress
                 sprintf(radiopacket + strlen(radiopacket),
-                        "%.2lf %.2lf %.2lf",                                                    // Format decimal with two decimals
+                        " %.2lf %.2lf %.2lf",                                                    // Format decimal with two decimals
                         euler.x(),                                                              // Rotation angle in the X angle
                         euler.y(),                                                              // Rotation angle in the Y angle
                         euler.z());                                                             // Rotation angle in the Z angle
@@ -717,7 +720,7 @@ void PrepareHeader() {
 
                 imu::Vector<3> magn = bno.getVector(Adafruit_BNO055::VECTOR_MAGNETOMETER);      // * μTesla
                 sprintf(radiopacket + strlen(radiopacket),
-                        " %.2lf %.2lf %.2lf ",                                                  // Format decimal with two decimals
+                        " %.2lf %.2lf %.2lf",                                                  // Format decimal with two decimals
                         magn.x(),                                                               // Magnetism in the X axis
                         magn.y(),                                                               // Magnetism in the Y axis
                         magn.z());                                                              // Magnetism in the Z axis
@@ -763,7 +766,7 @@ void PrepareHeader() {
          * !Warning!    GPS must be initialized
          * 
          * ? Output Format:
-         * ? (latitude), (longitude), (altitude), (speed)
+         * ? (latitude), (longitude), (altitude)
          */
         void UseGPS() {
                 if (!Gps_init_state) {
@@ -791,30 +794,26 @@ void PrepareHeader() {
                         (int)gps.fixquality);
   
                 if (gps.fix) {
-                        float latitude = gps.latitude * ((gps.lat == 'N')? 1.0 : -1.0);
-                        float longtitude = gps.longitude * ((gps.lon == "E")? 1.0 : -1.0);
-
                         sprintf(gpsPacket + strlen(gpsPacket),
                                 "\nLocation: %.4f, %.4f, %.4f\nSpeed: %d\nSatellites: %d\0",
-                                latitude,
-                                longtitude,
+                                gps.latitude,
+                                gps.longitude,
                                 gps.altitude,
                                 gps.speed,
                                 gps.satellites);
 
                         sprintf(radiopacket + strlen(radiopacket),
-                                " %.4f %.4f %.4f %.2f",
-                                latitude,
-                                longtitude,
-                                gps.altitude,
-                                gps.speed);
+                                " %.4f %.4f %.4f",
+                                gps.latitude,
+                                gps.longitude,
+                                gps.altitude);
                 }
                 else {
                         sprintf(radiopacket + strlen(radiopacket),
                                 " + + +");
                 }
 
-                Serial.println(gpsPacket);
+                //Serial.println(gpsPacket);
         }
 #endif
 #pragma endregion
@@ -823,8 +822,11 @@ void PrepareHeader() {
 #pragma region DATA_HANDLER_REGION
 
 void SaveData() {
-        DEBUGLN(radiopacket);
-
+        //DEBUGLN(radiopacket);
+        if (Serial.available()) {
+                command = Serial.readString().c_str();
+                ApplyCommand();
+        }
 #if defined(SDC)
         if (Sdc_init_state) {
                 dataFile = SD.open("data.txt", FILE_WRITE);
@@ -847,6 +849,72 @@ void SaveData() {
                 rfm.waitPacketSent();
         }
 #endif
+}
+
+#pragma endregion
+
+
+#pragma region COMMANDS_REGION
+
+void bzr() {
+        command[strlen(command) - 1] = '\0';
+        if (strcmp(command, "on") == 0)
+                digitalWrite(BUZZER_PIN, HIGH);
+        else if (strcmp(command, "pulse") == 0)
+                Bzr_init_state = true;
+        else if (strcmp(command, "npulse") == 0) {
+                Bzr_init_state = false;
+                digitalWrite(BUZZER_PIN, LOW);
+        }
+        else
+                digitalWrite(BUZZER_PIN, LOW);
+}
+
+void lmp() {
+        command[strlen(command) - 1] = '\0';
+        Serial.print("LMP received. Arguments: \"");
+        Serial.print(command);
+        Serial.println("\"");
+}
+
+void rmp() {
+        command[strlen(command) - 1] = '\0';
+        Serial.print("RMP received. Arguments: \"");
+        Serial.print(command);
+        Serial.println("\"");
+        
+}
+
+#pragma endregion
+
+
+#pragma region APPLY_COMMAND_REGION
+
+char* commands[] = {
+        "bzr",
+        "lmp",
+        "rmp"
+};
+
+void (*functions[])() = {
+        bzr,
+        lmp,
+        rmp
+};
+
+int SearchFunctions(char comm[]) {
+        for (int i = 0; i < sizeof(commands); i++) {
+          if (strcmp(commands[i], comm) == 0) return i;
+        }
+        return -1;
+}
+
+void ApplyCommand() {
+        char comm[3] = { command[0], command[1], command[2] };
+        command += 3;
+        int pos = SearchFunctions(comm);
+        if (pos == -1) return;
+        (*functions[pos])();
 }
 
 #pragma endregion
