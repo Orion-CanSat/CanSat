@@ -25,7 +25,7 @@
 
 
 #pragma region SENSOR_REGION
-//// #define RFM
+#define RFM
 //// #define SDC
 //// #define BME
 //// #define BNO
@@ -152,7 +152,7 @@
  * Will be used for setup purposes
  */
 #pragma region CONSTANTS_REGION
-//#define MODE 0x00                                                                             // 0x00 for CanSat and 0x01 for GroundStation
+#define MODE 0x00                                                                               // 0x00 for CanSat and 0x01 for GroundStation
                                                                                                 // Will change order of execution of the SaveData
                                                                                                 // function. If 0x00, Program will gather data and send them
                                                                                                 // to Ground. if 0x01, Program will wait for data and store them.
@@ -319,12 +319,13 @@ bool waitTimeout(bool(*func)(), uint32_t dur) {
 
 void setup() {
         #if (defined DEBUG_MODE)
-                Serial.begin(11500);
+                Serial.begin(9600);
                 delay(INIT_PAUSE);
         #endif
 
+        digitalWrite(4, HIGH);
         #if defined(SDC)
-        while (Serial.available() == 4 || millis() < 10000);                                    // Wait for CanSat to receive 4 bytes or wait for 10s
+        /*while (Serial.available() != 4 || millis() < 10000);                                  // Wait for CanSat to receive 4 bytes or wait for 10s
                 if (Serial.available() == 4) {                                                  // Check if can read 4 bytes from Serial => Computer is connected
                         if (Sdc_init_state = waitTimeout(InitSDC, MAX_TIMEOUT_FUNCTION)) {
                                 File dataf = SD.open("data.txt");
@@ -340,6 +341,7 @@ void setup() {
                                 }
                         }
                 }
+        */
         #endif
         pinMode(SCK_PIN, OUTPUT);                                                               // Set the SPI Clock to Output
         pinMode(MOSI_PIN, OUTPUT);                                                              // Set the MOSI to Output
@@ -460,15 +462,13 @@ void setup() {
                 }
         #endif
         
-        PrepareHeader();                                                                        // Send how data fill be formatted
+        //PrepareHeader();                                                                      // Send how data fill be formatted
 
         sprintf(radiopacket, "\0");
 }
 
 void loop() {
-
-        //waitTimeout(UseCAM, 500);
-        if (millis() - buzzer_timer > 1000 && Bzr_init_state && IsNotMovingOrMovingSlowly()) {  // Checks if buzzer is initialized
+        if (millis() - buzzer_timer > 1000 && Bzr_init_state /*&& IsNotMovingOrMovingSlowly()*/) {// Checks if buzzer is initialized
                                                                                                 // and if it is not moving
                 digitalWrite(BUZZER_PIN, !buzzer_state);                                        // Change state of Buzzer pin
                 buzzer_state = !buzzer_state;
@@ -501,8 +501,6 @@ void loop() {
         SaveData();                                                                             // Save and Send data
         
         radiopacket[0] = '\0';                                                                  // Empty data
-
-        delay(1000);
 }
 
 /**
@@ -518,7 +516,7 @@ uint32_t FindSize(char* str) {
         return size;                                                                            // Return last index
 }
 
-void PrepareHeader() {
+/*void PrepareHeader() {
         sprintf(radiopacket, "%s%s%s%s",
         #if defined(BME)
                 "Temperature Pressure Humidity Altitude ",
@@ -548,12 +546,12 @@ void PrepareHeader() {
         #endif
 
         SaveData();
-}
+}*/
 
 bool IsNotMovingOrMovingSlowly() {
         #if defined(BNO)
                 double velocity = sqrt(pow(vel[0], 2) + pow(vel[1], 2) + pow(vel[2], 2));
-                return (velocity < 1);
+                return !(velocity < 1);
         #else
                 return true;
         #endif
@@ -578,11 +576,11 @@ bool IsNotMovingOrMovingSlowly() {
 
                         rfm.setTxPower(23, false);                                              // Set Transmit Power to x db for one meter.
 
-                        rfm.setThisAddress(CANSAT_NODE_ADDRESS);                                // Used to create an end to end communication. Will not allow
-                        rfm.setHeaderFrom(CANSAT_NODE_ADDRESS);                                 // for communication outside specified Nodes
-                        rfm.setHeaderTo(GROUND_NODE_ADDRESS);
+                        //rfm.setThisAddress(CANSAT_NODE_ADDRESS);                                // Used to create an end to end communication. Will not allow
+                        //rfm.setHeaderFrom(CANSAT_NODE_ADDRESS);                                 // for communication outside specified Nodes
+                        //rfm.setHeaderTo(GROUND_NODE_ADDRESS);
 
-                        rfm.setPromiscuous(false);                                              // Allow / Disallow communication outside specified Nodes
+                        //rfm.setPromiscuous(false);                                              // Allow / Disallow communication outside specified Nodes
 
                         return true;
                 }
@@ -1082,15 +1080,28 @@ void SaveData() {
                 #if defined(RFM)
                         rfm.send((uint8_t*)command, strlen(command) + 1);
                 #endif
-                ApplyCommand();
+                #if (MODE == 0x00)
+                        ApplyCommand();
+                #endif
         }
         #if defined(RFM)
-        else if (rfm.waitAvailableTimeout(60)) {
-                uint8_t len;
-                rfm.recv((uint8_t*)command, &len);
-                DEBUGLN(command);
-                ApplyCommand();
-        }
+        #if (MODE == 0x00)
+                else if (rfm.waitAvailableTimeout(60)) {
+        #elif (MODE == 0x01)
+                else if (rfm.waitAvailableTimeout(30000)) {
+        #endif
+                        uint8_t len;
+                        if (rfm.recv(command, &len)) {
+                                DEBUGLN(command);
+                                RH_RF95::printBuffer("request: ", command, len);
+                        }
+                        #if (MODE == 0x00)
+                                ApplyCommand();
+                        #endif
+                }
+        #if (MODE == 0x01)
+                else DEBUGLN("GND");
+        #endif
         #endif
 #if defined(SDC)
         if (Sdc_init_state) {
@@ -1109,8 +1120,7 @@ void SaveData() {
 
 #if defined(RFM)
         if (Rfm_init_state) {
-                rfm.send((uint8_t*)radiopacket, strlen(radiopacket) + 1);
-                rfm.waitPacketSent();
+                rfm.send(radiopacket, strlen(radiopacket) + 1);
         }
 #endif
 }
@@ -1134,12 +1144,14 @@ void bzr() {
                 digitalWrite(BUZZER_PIN, LOW);
 }
 
+#if defined(MOT)
 void lmp() {
         command[strlen(command) - 1] = '\0';
-        DEBUG("LMP received. Arguments: \"");
-        DEBUG(command);
-        DEBUGLN("\"");
+        int numericArgument = stoi(command);
+        DEBUGLN(numericArgument);
+        driver.SetPower(driver.GetAPower(), (short)numericArgument);
 }
+#endif
 
 #if defined(RFM)
 void rfc() {
@@ -1162,6 +1174,7 @@ void rfc() {
 }
 #endif
 
+#if defined(MOT)
 void rmp() {
         command[strlen(command) - 1] = '\0';
         DEBUG("RMP received. Arguments: \"");
@@ -1169,27 +1182,36 @@ void rmp() {
         DEBUGLN("\"");
         
 }
+#endif
 
 #pragma endregion
 
 
 #pragma region APPLY_COMMAND_REGION
 char* commands[] = {
-        "bzr",
-        "lmp",
-#if defined(RFM)
-        "rfc",
+        "bzr"
+#if defined(MOT)
+        ,"lmp"
 #endif
-        "rmp"
+#if defined(RFM)
+        ,"rfc"
+#endif
+#if defined(MOT)
+        ,"rmp"
+#endif
 };
 
 void (*functions[])() = {
-        bzr,
-        lmp,
-#if defined(RFM)
-        rfc,
+        bzr
+#if defined(MOT)
+        ,lmp
 #endif
-        rmp
+#if defined(RFM)
+        ,rfc
+#endif
+#if defined(MOT)
+        ,rmp
+#endif
 };
 
 /**
