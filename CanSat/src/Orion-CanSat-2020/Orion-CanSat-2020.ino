@@ -21,11 +21,11 @@
  */
 
 
-//// AD98944C4E993C2D58F8B2487D2C165B                                                           // Check-sum md5 of the first region
+//// B34D91192A8C352024468B673A460808                                                           // Check-sum md5 of the first region
 
 
 #pragma region SENSOR_REGION
-#define RFM
+//// #define RFM
 //// #define SDC
 //// #define BME
 //// #define BNO
@@ -74,7 +74,6 @@
 #endif
 
 #include <SPI.h>
-//#include <i2c_t3.h>
 #include <Wire.h>
 #include <SoftwareSerial.h>
 #include <inttypes.h>
@@ -119,7 +118,7 @@
         /**
          * Will print to Serial the arguments given
          * 
-         * !Warning!	Requires a valid Serial port to be opened.
+         * !Warning!  Requires a valid Serial port to be opened.
          */
         #define DEBUG(...) { if (Serial) Serial.print(__VA_ARGS__); }
 
@@ -127,7 +126,7 @@
          * Will print to Serial the arguments given
          * plus a new line at the end
          * 
-         * !Warning!	Requires a valid Serial port to be opened.
+         * !Warning!  Requires a valid Serial port to be opened.
          */
         #define DEBUGLN(...) { if (Serial) Serial.println(__VA_ARGS__); }
 
@@ -136,7 +135,7 @@
         /**
          * Will skip a DEBUG Function
          * 
-         * !Warning!	This is the mode desired for the launch
+         * !Warning!  This is the mode desired for the launch
          * !            Because it does not waste time.
          */
         #define DEBUG(...) { }
@@ -152,7 +151,7 @@
  * Will be used for setup purposes
  */
 #pragma region CONSTANTS_REGION
-#define MODE 0x00                                                                               // 0x00 for CanSat and 0x01 for GroundStation
+//#define MODE 0x01                                                                             // 0x00 for CanSat and 0x01 for GroundStation
                                                                                                 // Will change order of execution of the SaveData
                                                                                                 // function. If 0x00, Program will gather data and send them
                                                                                                 // to Ground. if 0x01, Program will wait for data and store them.
@@ -160,22 +159,22 @@
                                                                                                 // TODO: Implement `MODE` in program
 
 #define RFM_FREQ 433.3                                                                          // RF Frequency for the RFM9x or 65
-                                                                                                // !Warning!	Base's Frequency.
+                                                                                                // !Warning!  Base's Frequency.
                                                                                                 // Must be set to the same
                                                                                                 // Frequency
                                                                                                 // TODO: Change it to a different Frequency
 
 
-#define RFM_RST 3                                                                               // Reset pin number
+#define RFM_RST 2                                                                               // Reset pin number
 
-#define RFM_INT 2                                                                               // RF Interrupt pin
+#define RFM_INT 3                                                                               // RF Interrupt pin
                                                                                                 // Will Interrupt program'same
                                                                                                 // execution if pin pulled HIGH
                                                                                                 // 
-                                                                                                // !Warning!	Must be Interrupt 
+                                                                                                // !Warning!  Must be Interrupt 
                                                                                                 // !            Friendly.
 
-#define RFM_CS 9                                                                                // RF's Chip Select pin
+#define RFM_CS 4                                                                                // RF's Chip Select pin
                                                                                                 // Used for the SPI Protocol
 
 #define CANSAT_NODE_ADDRESS 0x01
@@ -285,6 +284,10 @@ bool Bzr_init_state = false;
 #pragma endregion
 
 
+#pragma region CONSTANTS_REGION
+const unsigned int functionCount;
+#pragma endregion
+
 #pragma region VARIABLE_REGION
 char radiopacket[300];
 char* command;
@@ -299,6 +302,7 @@ double* pos = (double*)malloc(3 * sizeof(double));
 #endif
 bool buzzer_state;
 unsigned long buzzer_timer;
+uint16_t numOfGoodTransmissions = 0;
 char* image;
 #pragma endregion
 
@@ -307,9 +311,10 @@ char* image;
  * Creates a timeout function
  * Will stop function if exceeds time limit
  * 
- * !Warning!	Some functions can not be timed out.
+ * !Warning!  Some functions can not be timed out.
  */
-bool waitTimeout(bool(*func)(), uint32_t dur) {
+bool waitTimeout(bool(*func)(), uint32_t dur)
+{
         bool last = false;                                                                      // Create a state variable
         uint32_t start_time = millis();                                                         // Get current time
         while (!last && millis() < start_time + dur)                                            // Check if function has not ended or time has not exceeded time limit
@@ -317,19 +322,23 @@ bool waitTimeout(bool(*func)(), uint32_t dur) {
         return last;                                                                            // Return function's output or false
 }
 
-void setup() {
+void setup()
+{
         #if (defined DEBUG_MODE)
                 Serial.begin(9600);
                 delay(INIT_PAUSE);
         #endif
 
-        digitalWrite(4, HIGH);
+        /*
         #if defined(SDC)
-        /*while (Serial.available() != 4 || millis() < 10000);                                  // Wait for CanSat to receive 4 bytes or wait for 10s
-                if (Serial.available() == 4) {                                                  // Check if can read 4 bytes from Serial => Computer is connected
-                        if (Sdc_init_state = waitTimeout(InitSDC, MAX_TIMEOUT_FUNCTION)) {
+        while (Serial.available() == 4 || millis() < 10000);                                    // Wait for CanSat to receive 4 bytes or wait for 10s
+                if (Serial.available() == 4)                                                    // Check if can read 4 bytes from Serial => Computer is connected
+                {
+                        if (Sdc_init_state = waitTimeout(InitSDC, MAX_TIMEOUT_FUNCTION))
+                        {
                                 File dataf = SD.open("data.txt");
-                                if (dataf) {
+                                if (dataf)
+                                {
                                         uint64_t fsize = dataf.size();
                                         char fsizeBuf[21];
                                         sprintf(fsizeBuf, "%" PRIu64, fsize);
@@ -341,8 +350,8 @@ void setup() {
                                 }
                         }
                 }
-        */
         #endif
+        */
         pinMode(SCK_PIN, OUTPUT);                                                               // Set the SPI Clock to Output
         pinMode(MOSI_PIN, OUTPUT);                                                              // Set the MOSI to Output
         pinMode(MISO_PIN, OUTPUT);                                                              // Set the MISO to Output
@@ -365,7 +374,8 @@ void setup() {
 
         delay(INIT_PAUSE);
 
-        for (uint8_t i = 0; i < 3; i++) {
+        for (uint8_t i = 0; i < 3; i++)
+        {
                 rm[i] = (double*)malloc(3 * sizeof(double));
                 acc[i] = 0;
                 nacc[i] = 0;
@@ -375,22 +385,27 @@ void setup() {
         
 
         #if defined(RFM)
-                if (Rfm_init_state = waitTimeout(InitRFM, MAX_TIMEOUT_FUNCTION)) {
+                if (Rfm_init_state = waitTimeout(InitRFM, MAX_TIMEOUT_FUNCTION))
+                {
 
                 }
-                else {
+                else
+                {
 
                 }
         #endif
 
         #if defined(SDC)
-                if (Sdc_init_state) {
+                if (Sdc_init_state)
+                {
                         SD.remove("data.txt");
                 }
-                else if (Sdc_init_state = waitTimeout(InitSDC, MAX_TIMEOUT_FUNCTION)) {
+                else if (Sdc_init_state = waitTimeout(InitSDC, MAX_TIMEOUT_FUNCTION))
+                {
                         SD.remove("data.txt");
                 }
-                else {
+                else
+                {
 
                 }
         #endif
@@ -416,60 +431,73 @@ void setup() {
         #endif
         
         #if defined(BME)
-                if (Bme_init_state = waitTimeout(InitBME, MAX_TIMEOUT_FUNCTION)) {
+                if (Bme_init_state = waitTimeout(InitBME, MAX_TIMEOUT_FUNCTION))
+                {
 
                 }
-                else {
+                else
+                {
                 
                 }
         #endif
 
         #if defined(BNO)
-                if (Bno_init_state = waitTimeout(InitBNO, MAX_TIMEOUT_FUNCTION)) {
+                if (Bno_init_state = waitTimeout(InitBNO, MAX_TIMEOUT_FUNCTION))
+                {
                 
                 }
-                else {
+                else
+                {
                 
                 }
         #endif
 
         #if defined(TSL)
-                if (Tsl_init_state = waitTimeout(InitTSL, MAX_TIMEOUT_FUNCTION)) {
+                if (Tsl_init_state = waitTimeout(InitTSL, MAX_TIMEOUT_FUNCTION))
+                {
 
                 }
-                else {
+                else
+                {
 
                 }
         #endif
 
         #if defined(GPS)
-                if (Gps_init_state = waitTimeout(InitGPS, MAX_TIMEOUT_FUNCTION)) {
+                if (Gps_init_state = waitTimeout(InitGPS, MAX_TIMEOUT_FUNCTION))
+                {
                   
                 }
-                else {
+                else
+                {
                   
                 }
         #endif
 
         #if defined(CAM)
-                if (Cam_init_state = waitTimeout(InitCAM, 3 * MAX_TIMEOUT_FUNCTION)) {
+                if (Cam_init_state = waitTimeout(InitCAM, 3 * MAX_TIMEOUT_FUNCTION))
+                {
                         sprintf(radiopacket, "Cam Init successful");
                         SaveData();
                 }
-                else {
+                else
+                {
                         sprintf(radiopacket, "Cam Init failed");
                         SaveData();
                 }
         #endif
         
-        //PrepareHeader();                                                                      // Send how data fill be formatted
+        PrepareHeader();                                                                        // Send how data fill be formatted
 
         sprintf(radiopacket, "\0");
 }
 
-void loop() {
-        if (millis() - buzzer_timer > 1000 && Bzr_init_state /*&& IsNotMovingOrMovingSlowly()*/) {// Checks if buzzer is initialized
-                                                                                                // and if it is not moving
+void loop()
+{
+
+        //waitTimeout(UseCAM, 500);
+        if (millis() - buzzer_timer > 1000 && Bzr_init_state && IsNotMovingOrMovingSlowly())    // Checks if buzzer is initialized
+        {                                                                                       // and if it is not moving
                 digitalWrite(BUZZER_PIN, !buzzer_state);                                        // Change state of Buzzer pin
                 buzzer_state = !buzzer_state;
                 buzzer_timer = millis();                                                        // Reset buzzer timer
@@ -501,22 +529,26 @@ void loop() {
         SaveData();                                                                             // Save and Send data
         
         radiopacket[0] = '\0';                                                                  // Empty data
+
+        delay(100);
 }
 
 /**
  * Get size of a pointer
  * 
- * !Warning! 	pointer must end with a null
+ * !Warning!  pointer must end with a null
  * !            character at the end.
  */
-uint32_t FindSize(char* str) {
+uint32_t FindSize(char* str)
+{
         uint32_t size = 0;
         while (str[size] != '\0') size++;                                                       // Check if array at index is null, end of array
                                                                                                 // else increment index by one till it's the end
         return size;                                                                            // Return last index
 }
 
-/*void PrepareHeader() {
+void PrepareHeader()
+{
         sprintf(radiopacket, "%s%s%s%s",
         #if defined(BME)
                 "Temperature Pressure Humidity Altitude ",
@@ -546,12 +578,13 @@ uint32_t FindSize(char* str) {
         #endif
 
         SaveData();
-}*/
+}
 
-bool IsNotMovingOrMovingSlowly() {
+bool IsNotMovingOrMovingSlowly()
+{
         #if defined(BNO)
                 double velocity = sqrt(pow(vel[0], 2) + pow(vel[1], 2) + pow(vel[2], 2));
-                return !(velocity < 1);
+                return (velocity < 1);
         #else
                 return true;
         #endif
@@ -566,25 +599,28 @@ bool IsNotMovingOrMovingSlowly() {
          * !            Depends on microprocessor and
          * !            connections made.
          */
-        bool InitRFM() {
+        bool InitRFM()
+        {
                 digitalWrite(RFM_RST, LOW);                                                     // Reset the RFM9x Module. Might not work if not
                 delay(100);                                                                     // Reset.
                 digitalWrite(RFM_RST, HIGH);
                 delay(100);
 
-                if (rfm.init() && rfm.setFrequency(RFM_FREQ)) {                                 // Check if RFM initialized and successfully set Frequency.
+                if (rfm.init() && rfm.setFrequency(RFM_FREQ))
+                {                                                                               // Check if RFM initialized and successfully set Frequency.
 
                         rfm.setTxPower(23, false);                                              // Set Transmit Power to x db for one meter.
 
-                        //rfm.setThisAddress(CANSAT_NODE_ADDRESS);                                // Used to create an end to end communication. Will not allow
-                        //rfm.setHeaderFrom(CANSAT_NODE_ADDRESS);                                 // for communication outside specified Nodes
+                        //rfm.setThisAddress(CANSAT_NODE_ADDRESS);                              // Used to create an end to end communication. Will not allow
+                        //rfm.setHeaderFrom(CANSAT_NODE_ADDRESS);                               // for communication outside specified Nodes
                         //rfm.setHeaderTo(GROUND_NODE_ADDRESS);
 
-                        //rfm.setPromiscuous(false);                                              // Allow / Disallow communication outside specified Nodes
+                        //rfm.setPromiscuous(false);                                            // Allow / Disallow communication outside specified Nodes
 
                         return true;
                 }
-                else {
+                else
+                {
                         return false;
                 }
         }
@@ -598,7 +634,8 @@ bool IsNotMovingOrMovingSlowly() {
          * !            Depends on microprocessor and SD
          * !            module used
          */
-        bool InitSDC() {
+        bool InitSDC()
+        {
 
                 if (SD.begin(SDC_CS)) {
                         return true;
@@ -615,15 +652,18 @@ bool IsNotMovingOrMovingSlowly() {
          * 
          * !Warning!    BME will throw multible "BME Init failed"
          */
-        bool InitBME() {
-                if (bme.begin()) {                                                              // BNO  initialized successfully
+        bool InitBME()
+        {
+                if (bme.begin())
+                {                                                                               // BNO  initialized successfully
                         sprintf(radiopacket,                                                    // Print that BNO did initialize
                                 "BME Init complete\0");
 
                         SaveData();                                                             // Save and Send data
                         return true;
                 }
-                else {                                                                          // BNO did not initialize successfully
+                else
+                {                                                                               // BNO did not initialize successfully
                         sprintf(radiopacket,                                                    // Print that BME did not initialize
                                 "BME Init faliled\0");
 
@@ -640,15 +680,18 @@ bool IsNotMovingOrMovingSlowly() {
          * !Warning!    Might end in an endless condition
          * !            Depends on microprocessor and wiring
          */
-        bool InitBNO() {
-                if (bno.begin()) {                                                              // BNO initialized successfully
+        bool InitBNO()
+        {
+                if (bno.begin())
+                {                                                                               // BNO initialized successfully
                         sprintf(radiopacket,                                                    // Print that BNO did initialize
                                 "BNO Init complete\0");
 
                         SaveData();                                                             // Save and Send data
                         return true;
                 }
-                else {                                                                          // BNO did not initialize successfully
+                else
+                {                                                                               // BNO did not initialize successfully
                         sprintf(radiopacket,                                                    // Print that BNO did not initialize
                                 "BNO Init failed\0");
 
@@ -665,8 +708,10 @@ bool IsNotMovingOrMovingSlowly() {
          * !Warning!    Might end in an endless condition
          * !            Depends on microprocessor and wiring
          */
-        bool InitTSL() {
-                if (tsl.begin()) {                                                              // TSL initialized successfully
+        bool InitTSL()
+        {
+                if (tsl.begin())                                                                // TSL initialized successfully
+                {
                         sprintf(radiopacket,                                                    // Print that TSL did initialize
                                 "TSL Init complete\0");
 
@@ -679,7 +724,8 @@ bool IsNotMovingOrMovingSlowly() {
 
                         return true;
                 }
-                else {                                                                          // TSL did not initialize successfully
+                else                                                                            // TSL did not initialize successfully
+                {
                         sprintf(radiopacket,                                                    // Print that TSL did not initialize
                                 "TSL Init failed\0");
 
@@ -696,7 +742,8 @@ bool IsNotMovingOrMovingSlowly() {
          * !Warning!    Might end in an endless condition
          * !            Depends on microprocessor and wiring
          */
-        bool InitGPS() {
+        bool InitGPS()
+        {
                 gps.begin(9600);
                 gps.sendCommand(PMTK_SET_NMEA_OUTPUT_RMCGGA);
                 gps.sendCommand(PMTK_SET_NMEA_UPDATE_1HZ);
@@ -715,7 +762,8 @@ bool IsNotMovingOrMovingSlowly() {
 
 #if defined(CAM)
 
-        bool CheckCameraSPI() {
+        bool CheckCameraSPI()
+        {
                 cam.write_reg(ARDUCHIP_TEST1, 0x55);                                            // Write 0x55 in test register to test
                                                                                                 // if the SPI connection is working
 
@@ -726,7 +774,8 @@ bool IsNotMovingOrMovingSlowly() {
                 return true;
         }
 
-        bool EvaluateCamera() {
+        bool EvaluateCamera()
+        {
                 uint8_t vid, pid;
                 cam.rdSensorReg16_8(OV5642_CHIPID_HIGH, &vid);
                 cam.rdSensorReg16_8(OV5642_CHIPID_LOW, &pid);
@@ -741,12 +790,15 @@ bool IsNotMovingOrMovingSlowly() {
          * !Warning!    Might end in an endless condition
          * !            Depends on microprocessor and wiring
          */
-        bool InitCAM() {
+        bool InitCAM()
+        {
                 cam.CS_LOW();                                                                   // Activates the Camera SPI
-                if (!waitTimeout(CheckCameraSPI, MAX_TIMEOUT_FUNCTION)) {                       // Checks if Camera can not successfully
+                if (!waitTimeout(CheckCameraSPI, MAX_TIMEOUT_FUNCTION))                         // Checks if Camera can not successfully
+                {
                   return false;                                                                 // communicate with the microcontroller
                 }
-                if (!waitTimeout(EvaluateCamera, MAX_TIMEOUT_FUNCTION)) {                       // Check if cammera is what it was programmed
+                if (!waitTimeout(EvaluateCamera, MAX_TIMEOUT_FUNCTION))                         // Check if cammera is what it was programmed
+                {
                   return false;
                 }
                 cam.set_format(JPEG);                                                           // Set pictures format to JPEG.
@@ -772,10 +824,12 @@ bool IsNotMovingOrMovingSlowly() {
          * !Warning!    Bme must be initialized
          * 
          * ? Output Format:
-         * ? (Temperature), (Pressure), (Humidity), (Altitude)
+         * ? (Temperature), (Pressure), (Humidity)
          */
-        void UseBME() {
-                if (!Bme_init_state) {
+        void UseBME()
+        {
+                if (!Bme_init_state)
+                {
                         sprintf(radiopacket + strlen(radiopacket),                              // Add to radiopacket
                                 "+ + +");                                                       // 3 pluses - no values
                         return;
@@ -796,7 +850,8 @@ bool IsNotMovingOrMovingSlowly() {
         /**
          * TODO: Make function
          */
-        void GetPossition() {
+        void GetPossition()
+        {
 
         }
 
@@ -807,7 +862,8 @@ bool IsNotMovingOrMovingSlowly() {
          * 
          * TODO: Include the possitioning system
          */
-        void NormalizeAccelerations() {
+        void NormalizeAccelerations()
+        {
                 for (uint8_t i = 0; i < 3; i++)
                         ang[i] *= PI / 180;                                                     // Degrees to Rad conversion
                 
@@ -838,10 +894,12 @@ bool IsNotMovingOrMovingSlowly() {
          * ? (gravitational acceleration {x, y, z}), (linear acceleration {x, y, z}),
          * ? (magnetism {x, y, z})
          */
-        void UseBNO() {
-                if (!Bno_init_state) {
+        void UseBNO()
+        {
+                if (!Bno_init_state)
+                {
                         sprintf(radiopacket + strlen(radiopacket),                              // Add to radiopacket
-                        " + + + + + + + + +");                                                 // 9 pluses - no values
+                        " + + + + + + + + +");                                                  // 9 pluses - no values
                         return;
                 }
 
@@ -922,8 +980,10 @@ bool IsNotMovingOrMovingSlowly() {
          * ? Output Format:
          * ? (infrared luminosity), (full luminosity)
          */
-        void UseTSL() {
-                if (!Tsl_init_state) {
+        void UseTSL()
+        {
+                if (!Tsl_init_state)
+                {
                         sprintf(radiopacket + strlen(radiopacket),                              // Add to radiopacket
                                 " + +");                                                        // 2 pluses - no values
                         return;
@@ -954,17 +1014,15 @@ bool IsNotMovingOrMovingSlowly() {
          * ? Output Format:
          * ? (latitude), (longitude), (altitude)
          */
-        void UseGPS() {
-                if (!Gps_init_state) {
+        void UseGPS()
+        {
+                if (!Gps_init_state)
+                {
                         sprintf(radiopacket + strlen(radiopacket),
                                 "+ +");
                         return;
                 }
-                if (gps.newNMEAreceived()) {
-                        if (!gps.parse(gps.lastNMEA())) {
-                                return;
-                        }
-                }
+                if (gps.newNMEAreceived() && !gps.parse(gps.lastNMEA())) return;
 
                 char gpsPacket[200] = "\0";
 
@@ -979,7 +1037,8 @@ bool IsNotMovingOrMovingSlowly() {
                         (int)gps.fix,
                         (int)gps.fixquality);
   
-                if (gps.fix) {
+                if (gps.fix)
+                {
                         sprintf(gpsPacket + strlen(gpsPacket),
                                 "\nLocation: %.4f, %.4f, %.4f\nSpeed: %d\nSatellites: %d\0",
                                 gps.latitude,
@@ -992,9 +1051,9 @@ bool IsNotMovingOrMovingSlowly() {
                                 " %.4f %.4f",
                                 gps.latitude,
                                 gps.longitude);
-                                //gps.altitude);
                 }
-                else {
+                else
+                {
                         sprintf(radiopacket + strlen(radiopacket),
                                 " + +");
                 }
@@ -1009,7 +1068,8 @@ bool IsNotMovingOrMovingSlowly() {
          * 
          * !Warning!    CAM must be initialized
          */
-        bool UseCAM() {
+        bool UseCAM()
+        {
                 uint8_t temp = 0, temp_last = 0;
                 byte buffer[250];
                 int i = 0;
@@ -1029,22 +1089,27 @@ bool IsNotMovingOrMovingSlowly() {
                 cam.CS_LOW();
                 cam.set_fifo_burst();
 
-                while (imagelength--) {
+                while (imagelength--)
+                {
                         temp_last = temp;
                         temp = SPI.transfer(0x00);
-                        if (temp == 0xD9 && temp_last == 0xFF) {
+                        if (temp == 0xD9 && temp_last == 0xFF)
+                        {
                                 buffer[i++] = temp;
                                 cam.CS_HIGH();
-                                for (int j = 0; j < i; i++) {
+                                for (int j = 0; j < i; i++)
+                                {
                                         image[pos++] = buffer[j];
                                 }
                                 isHeader = false;
                                 i = 0;
                         }
-                        if (isHeader) {
+                        if (isHeader)
+                        {
                                 if (i < 255) 
                                         buffer[i++] = temp;
-                                else {
+                                else
+                                {
                                         cam.CS_HIGH();
                                         for (int j = 0; j < 256; j++)
                                                 image[pos++] = buffer[j];
@@ -1052,7 +1117,8 @@ bool IsNotMovingOrMovingSlowly() {
                                         cam.set_fifo_burst();
                                 }
                        }
-                       else if (temp == 0xD8 && temp_last == 0xFF) {
+                       else if (temp == 0xD8 && temp_last == 0xFF)
+                       {
                                isHeader = true;
                                buffer[i++] = temp_last;
                                buffer[i++] = temp;
@@ -1061,7 +1127,8 @@ bool IsNotMovingOrMovingSlowly() {
                 cam.CS_HIGH();
                 File out;
                 out = SD.open("image.jpg");
-                for (uint32_t j = 0; j < length; j++) {
+                for (uint32_t j = 0; j < length; j++)
+                {
                         out.write(image[j]);
                 }
                 out.close();
@@ -1073,44 +1140,35 @@ bool IsNotMovingOrMovingSlowly() {
 
 #pragma region DATA_HANDLER_REGION
 
-void SaveData() {
-        DEBUGLN(radiopacket);
-        if (Serial.available()) {
-                command = (char*)Serial.readString().c_str();
-                #if defined(RFM)
-                        rfm.send((uint8_t*)command, strlen(command) + 1);
-                #endif
-                #if (MODE == 0x00)
-                        ApplyCommand();
-                #endif
-        }
-        #if defined(RFM)
-        #if (MODE == 0x00)
-                else if (rfm.waitAvailableTimeout(60)) {
-        #elif (MODE == 0x01)
-                else if (rfm.waitAvailableTimeout(30000)) {
-        #endif
-                        uint8_t len;
-                        if (rfm.recv(command, &len)) {
-                                DEBUGLN(command);
-                                RH_RF95::printBuffer("request: ", command, len);
-                        }
-                        #if (MODE == 0x00)
-                                ApplyCommand();
-                        #endif
-                }
+void SaveData()
+{
         #if (MODE == 0x01)
-                else DEBUGLN("GND");
-        #endif
+                  DEBUGLN(radiopacket);
+                  if (Serial.available())
+                  {
+                          command = (char*)Serial.readString().c_str();
+                          #if defined(RFM)
+                                  rfm.send((uint8_t*)command, strlen(command) + 1);
+                          #endif
+                          ApplyCommand();
+                  }
+                  #if defined(RFM)
+                        if (ReceiveData()) ApplyCommand();
+                  #endif
+        #elif (MODE == 0x02)
+                ReceiveData();
         #endif
 #if defined(SDC)
-        if (Sdc_init_state) {
+        if (Sdc_init_state)
+        {
                 dataFile = SD.open("data.txt", FILE_WRITE);
 
-                if (!dataFile) {
+                if (!dataFile)
+                {
                         DEBUGLN("File opening failed");
                 }
-                else {
+                else
+                {
                         dataFile.println(radiopacket);
 
                         dataFile.close();
@@ -1119,24 +1177,55 @@ void SaveData() {
 #endif
 
 #if defined(RFM)
-        if (Rfm_init_state) {
-                rfm.send(radiopacket, strlen(radiopacket) + 1);
-        }
+        SendData();
 #endif
 }
+
+#if defined(RFM)
+bool ReceiveData()
+{
+        if (!Rfm_init_state) return false;
+        if (!rfm.waitAvailableTimeout(60)) return false;
+        uint8_t len;
+        rfm.recv((uint8_t*)command, &len);
+        DEBUGLN(command);
+        DEBUG("RSSI: ");
+        //DEBUGLN(rfm.lastRSSI());
+        return true;
+}
+#endif
+
+#if defined(RFM)
+void SendData()
+{
+        if (!Rfm_init_state) return;
+        if (numOfGoodTransmissions + 1 < rfm.txGood())
+        {
+                // Previous packet not successfully transmited
+        }
+        numOfGoodTransmissions = rfm.txGood();
+        rfm.send((uint8_t*)radiopacket, strlen(radiopacket) + 1);
+        // TODO: Insert code for the transmition check. Will use the numOfGoodTransmissionsBefore to check.
+
+        // ? Deprecated because it will cause a delay
+        // rfm.waitPacketSent();
+}
+#endif
 
 #pragma endregion
 
 
 #pragma region COMMANDS_REGION
 
-void bzr() {
+void bzr()
+{
         command[strlen(command) - 1] = '\0';
         if (strcmp(command, "on") == 0)
                 digitalWrite(BUZZER_PIN, HIGH);
         else if (strcmp(command, "pulse") == 0)
                 Bzr_init_state = true;
-        else if (strcmp(command, "npulse") == 0) {
+        else if (strcmp(command, "npulse") == 0)
+        {
                 Bzr_init_state = false;
                 digitalWrite(BUZZER_PIN, LOW);
         }
@@ -1144,28 +1233,32 @@ void bzr() {
                 digitalWrite(BUZZER_PIN, LOW);
 }
 
-#if defined(MOT)
-void lmp() {
+void lmp()
+{
         command[strlen(command) - 1] = '\0';
-        int numericArgument = stoi(command);
-        DEBUGLN(numericArgument);
-        driver.SetPower(driver.GetAPower(), (short)numericArgument);
+        DEBUG("LMP received. Arguments: \"");
+        DEBUG(command);
+        DEBUGLN("\"");
 }
-#endif
 
 #if defined(RFM)
-void rfc() {
+void rfc()
+{
         if (!Rfm_init_state) return;
         if (strlen(command) != 5) return;
         uint8_t* com1;
         strncpy((char*)com1, command, 4);
-        if (strcmp(command, "sleep") == 0) {
+        if (strcmp(command, "sleep") == 0)
+        {
                 rfm.sleep();
                 DEBUGLN("Set mode to Sleep");
         }
-        else if (strcmp((char*)com1, "freq") == 0) {
-                if (command[4] - '0' >= 0 && command[4] - '0' <= 9) {
-                        if (rfm.setFrequency(433.0 + (double)(command[4] - '0') / 10)) {
+        else if (strcmp((char*)com1, "freq") == 0)
+        {
+                if (command[4] - '0' >= 0 && command[4] - '0' <= 9)
+                {
+                        if (rfm.setFrequency(433.0 + (double)(command[4] - '0') / 10))
+                        {
                                 DEBUG("Set frequency to ");
                                 DEBUGLN(433.0 + (double)(command[4] - '0') / 10);
                         }
@@ -1174,34 +1267,35 @@ void rfc() {
 }
 #endif
 
-#if defined(MOT)
-void rmp() {
+void rmp()
+{
         command[strlen(command) - 1] = '\0';
         DEBUG("RMP received. Arguments: \"");
         DEBUG(command);
         DEBUGLN("\"");
         
 }
-#endif
 
 #pragma endregion
 
 
 #pragma region APPLY_COMMAND_REGION
-char* commands[] = {
-        "bzr"
+const char* commands[] =
+{
+        "bzr\0"
 #if defined(MOT)
-        ,"lmp"
+        ,"lmp\0"
 #endif
 #if defined(RFM)
-        ,"rfc"
+        ,"rfc\0"
 #endif
 #if defined(MOT)
-        ,"rmp"
+        ,"rmp\0"
 #endif
 };
 
-void (*functions[])() = {
+const void (*functions[])() =
+{
         bzr
 #if defined(MOT)
         ,lmp
@@ -1215,10 +1309,11 @@ void (*functions[])() = {
 };
 
 /**
- * TODO: Change to BinarySearchFunctions
+ * DONE: Change to BinarySearchFunctions
  */
-int16_t SearchFunctions(char comm[]) {
-        //// return BinarySearchFunctions(comm, 0, sizeof(commands) / sizeof(commands[0]));
+int16_t SearchFunctions(const char comm[])
+{
+        return BinarySearchFunctions(comm, 0, sizeof(commands) / sizeof(commands[0]) - 1);      // !Warning!    MAX IS N-1
         return LinearSearchFunction(comm);
 }
 
@@ -1230,26 +1325,34 @@ int16_t SearchFunctions(char comm[]) {
  * 
  * TODO: Needs fixing
  */
-int16_t BinarySearchFunctions(char comm[], uint16_t min, uint16_t max) {
-        uint16_t mid = (min + max) / 2;
-        uint32_t comp = strcmp(commands[mid], comm);
+int16_t BinarySearchFunctions(const char comm[], uint16_t min, uint16_t max)
+{
+        if (max < min) return -1;
+        uint16_t mid = min + (max-min)/2;
+        int32_t comp = strcmp(commands[mid], comm);
         DEBUG(mid);
         DEBUG(" ");
         DEBUGLN(comp);
-        if (max < min) return -1;
-        if (comp > 0) return BinarySearchFunctions(comm, mid + 1, max);
-        else if (comp < 0) return BinarySearchFunctions(comm, min, mid - 1);
+        if (comp < 0) return BinarySearchFunctions(comm, mid + 1, max);
+        else if (comp > 0) return BinarySearchFunctions(comm, min, mid - 1);
         else if (comp == 0) return mid;
 }
 
-int16_t LinearSearchFunction(char comm[]) {
-        for (uint16_t i = 0; i < sizeof(commands) / sizeof(commands[0]); i++)
+/**
+ * !Warning!    Will be deprecated in next version
+ * 
+ * TODO: Deprecate in next major version
+ */
+int16_t LinearSearchFunction(const char comm[])
+{
+        for (uint16_t i = 0; i < functionCount; i++)
                 if (strcmp(commands[i], comm) == 0) return i;
         return -1;
 }
 
-void ApplyCommand() {
-        char comm[3] = { command[0], command[1], command[2] };
+void ApplyCommand()
+{
+        char comm[4] = { command[0], command[1], command[2], '\0'};
         command += 3;
         int16_t pos = SearchFunctions(comm);
         if (pos == -1) return;
