@@ -21,88 +21,47 @@
  */
 
 
-//// B34D91192A8C352024468B673A460808                                                           // Check-sum md5 of the first region
+#define __BME280__ 0x0001
+#define __BNO055__ 0x0002
 
-
-#pragma region SENSOR_REGION
-#define RFM9x
-#define SDC
-#define BME280
-#define BNO055
-#define GPS_Ultra
-#define MOTORS
-#define TSL2591                                                 // Will not use A TSL but will provide the
-                                                                // necessary code for the TSL for others to use
-#pragma endregion
-
-
-#pragma region INCLUSE_REGION
-#if defined(BME280)
+#if defined(__BME280__)
     #include <Adafruit_BME280.h>
+#endif
+#if defined(__BNO055__)
+    #include <Adafruit_BNO055.h>
+    #include <utility/imumaths.h>
 #endif
 
 #include <TeensyThreads.h>
-#include <SPI.h>
-#include <Wire.h>
-#include <SoftwareSerial.h>
-#pragma endregion
 
 
-#pragma region DEBUG_REGION
-#define DEBUG_MODE                                              // Define DEBUG MODE
-                                                                // MUST be undefined or removed
-                                                                // before launch
-#if defined(DEBUG_MODE)
-    /**
-     * Will print to Serial the arguments given
-     * 
-     * !Warning!  Requires a valid Serial port to be opened.
-     */
-    #define DEBUG(...) { if (Serial) Serial.print(__VA_ARGS__); }
-
-    /**
-     * Will print to Serial the arguments given
-     * plus a new line at the end
-     * 
-     * !Warning!  Requires a valid Serial port to be opened.
-     */
-    #define DEBUGLN(...) { if (Serial) Serial.println(__VA_ARGS__); }
-
-#else
-    /**
-     * Will skip a DEBUG Function
-     * 
-     * !Warning!  This is the mode desired for the launch
-     * !            Because it does not waste time.
-     */
-    #define DEBUG(...) { }
-    #define DEBUGLN(...) { }
-
-#endif
-#pragma endregion
+#define __MAX__TIMEOUT__FUNCTION__ 10000
 
 
-#pragma region MODULE_SPECIFIC_REGION
-#if defined(BME280)
-        #include <Adafruit_BME280.h>
-#endif
-#pragma endregion
+#define __TEMPERATURE__ 0x0001
+#define __HUMIDITY__ 0x0002
+#define __PRESSURE__ 0x0003
+#define __ALTITUDE__ 0x0004
 
+#define __ROTATIONAL_ANGLE_X__ 0x0005
+#define __ROTATIONAL_ANGLE_Y__ 0x0006
+#define __ROTATIONAL_ANGLE_Z__ 0x0007
 
-#pragma region GENERAL_MODULE_REGION
-#define MAX_TIMEOUT_FUNCTION 10000
+#define __ANGULAR_VELOCITY_X__ 0x0008
+#define __ANGULAR_VELOCITY_Y__ 0x0009
+#define __ANGULAR_VELOCITY_Z__ 0x000A
 
-#if defined(DEBUG_MODE)
-        #define INIT_PAUSE 1000                                 // Time between inits
-                                                                // TEST MODE or DEBUG MODE
-                                                                // All defines must be removed
-                                                                // before launch
-#else
-        #define INIT_PAUSE 4000                                 // Time between inits
-#endif
+#define __GRAVITATIONAL_ACCELERATION_X__ 0x000B
+#define __GRAVITATIONAL_ACCELERATION_Y__ 0x000C
+#define __GRAVITATIONAL_ACCELERATION_Z__ 0x000D
 
-#define SEA_LEVEL_PRESSURE_REF 1013.25                          // Air pressure at sea level
-#pragma endregion
+#define __LINEAR_ACCELERATION_X__ 0x000E
+#define __LINEAR_ACCELERATION_Y__ 0x000F
+#define __LINEAR_ACCELERATION_Z__ 0x0010
+
+#define __MAGNETISM_X__ 0x0011
+#define __MAGNETISM_Y__ 0x0012
+#define __MAGNETISM_Z__ 0x0013
 
 
 namespace Orion
@@ -111,7 +70,7 @@ namespace Orion
     {
         class Timeout
         {
-        public:
+            public:
             static bool WaitTimeout(bool(*func)(void*), void* ptr, uint32_t duration)
             {
                 bool last = false;
@@ -151,31 +110,26 @@ namespace Orion
                 return last;
             }
         };
-    };
+    }
 
-    #define __TEMPERATURE__ 0x0001
-    #define __HUMIDITY__ 0x0002
-    #define __PRESSURE__ 0x0003
-    #define __ALTITUDE__ 0x0004
-
-    struct noBaseClass{} nbc;
-
-    class Module
+    namespace Modules
     {
-    public:
-        Module() { }
-        Module(noBaseClass) { }
+        struct noBaseClass{} nbc;
 
-        virtual uint32_t GetType() { return 0x00; }
-        virtual bool HasDataType(uint32_t type) { return false; }
-        virtual double GetData(uint32_t type) { return .0f; }
-        
-        virtual void GetNewData() { }
-        virtual void AutoUpdateInterval(uint32_t interval) { }
-    };
+        class Module
+        {
+        public:
+            Module() { }
+            Module(noBaseClass) { }
 
-    //#if defined(BME280)
-        #define __BME280__ 0x0001
+            virtual uint32_t GetType() { return 0x00; }
+            virtual bool HasDataType(uint32_t type) { return false; }
+            virtual double GetData(uint32_t type) { return .0f; }
+            
+            virtual void Update() { }
+            virtual void AutoUpdateInterval(uint32_t interval) { }
+        };
+
         class BME280 : virtual public Module
         {
         private:
@@ -187,25 +141,25 @@ namespace Orion
             {
                 return (((Adafruit_BME280*)bme) ? ((Adafruit_BME280*)bme)->begin() : false);
             }
-            static void ForeverGetNewData(BME280* ptr, uint32_t sleepDuration)
+            static void AsyncUpdate(BME280* Bme)
             {
                 while (true)
                 {
-                    ptr->GetNewData();
-                    delay(sleepDuration);
+                    Bme->Update();
+                    delay(100);
                 }
             }
 
             BME280() : Module(nbc)
             {
                 _bme = new Adafruit_BME280();
-                _bmeInitState = Utilities::Timeout::WaitTimeout(BME280::InitBME280, _bme, MAX_TIMEOUT_FUNCTION);
+                _bmeInitState = Utilities::Timeout::WaitTimeout(BME280::InitBME280, _bme, __MAX__TIMEOUT__FUNCTION__);
             }
 
             uint32_t GetType() { return __BME280__; }
             bool HasDataType(uint32_t type)
             {
-                switch (type)
+                switch(type)
                 {
                     case __TEMPERATURE__:
                     case __HUMIDITY__:
@@ -221,7 +175,7 @@ namespace Orion
                 switch (type)
                 {
                     case __TEMPERATURE__:
-                        return _altitude;
+                        return _temperature;
                     case __HUMIDITY__:
                         return _humidity;
                     case __PRESSURE__:
@@ -233,7 +187,7 @@ namespace Orion
                 }
             }
 
-            void GetNewData()
+            void Update()
             {
                 if (_bmeInitState)
                 {
@@ -250,126 +204,259 @@ namespace Orion
                     _altitude = .0f;
                 }
             }
-
             void AutoUpdateInterval(uint32_t interval)
             {
-                threads.addThread(BME280::ForeverGetNewData, this, interval);
+                threads.addThread(BME280::AsyncUpdate, this);
             }
         };
-    //#endif
 
-    class Temperature
+        class BNO055 : virtual public Module
+        {
+        private:
+            Adafruit_BNO055* _bno;
+            bool _bnoInitState = false;
+            double _rotationalAngleX = .0f, _rotationalAngleY = .0f, _rotationalAngleZ = .0f;
+            double _angularVelocityX = .0f, _angularVelocityY = .0f, _angularVelocityZ = .0f;
+            double _gravitationalAccelerationX = .0f, _gravitationalAccelerationY = .0f, _gravitationalAccelerationZ = .0f;
+            double _linearAccelerationX = .0f, _linearAccelerationY = .0f, _linearAccelerationZ = .0f;
+            double _magnetismX = .0f, _magnetismY = .0f, _magnetismZ = .0f;
+        public:
+            static bool InitBNO055(void* bno)
+            {
+                return (((Adafruit_BNO055*)bno) ? ((Adafruit_BNO055*)bno)->begin() : false);
+            }
+            static void AsyncUpdate(BNO055* Bno)
+            {
+                while (true)
+                {
+                    Bno->Update();
+                    delay(100);
+                }
+            }
+
+            BNO055() : Module(nbc)
+            {
+                _bno = new Adafruit_BNO055();
+                _bnoInitState = Utilities::Timeout::WaitTimeout(BNO055::InitBNO055, _bno, __MAX__TIMEOUT__FUNCTION__);
+            }
+
+            uint32_t GetType() { return __BNO055__; }
+            bool HasDataType(uint32_t type)
+            {
+                switch (type)
+                {
+                    case __ROTATIONAL_ANGLE_X__:
+                    case __ROTATIONAL_ANGLE_Y__:
+                    case __ROTATIONAL_ANGLE_Z__:
+                    case __ANGULAR_VELOCITY_X__:
+                    case __ANGULAR_VELOCITY_Y__:
+                    case __ANGULAR_VELOCITY_Z__:
+                    case __GRAVITATIONAL_ACCELERATION_X__:
+                    case __GRAVITATIONAL_ACCELERATION_Y__:
+                    case __GRAVITATIONAL_ACCELERATION_Z__:
+                    case __LINEAR_ACCELERATION_X__:
+                    case __LINEAR_ACCELERATION_Y__:
+                    case __LINEAR_ACCELERATION_Z__:
+                    case __MAGNETISM_X__:
+                    case __MAGNETISM_Y__:
+                    case __MAGNETISM_Z__:
+                        return true;
+                    default:
+                        return false;
+                }
+            }
+            double GetData(uint32_t type)
+            {
+                switch (type)
+                {
+                    case __ROTATIONAL_ANGLE_X__:
+                        return _rotationalAngleX;
+                    case __ROTATIONAL_ANGLE_Y__:
+                        return _rotationalAngleY;
+                    case __ROTATIONAL_ANGLE_Z__:
+                        return _rotationalAngleZ;
+                    case __ANGULAR_VELOCITY_X__:
+                        return _angularVelocityX;
+                    case __ANGULAR_VELOCITY_Y__:
+                        return _angularVelocityY;
+                    case __ANGULAR_VELOCITY_Z__:
+                        return _angularVelocityZ;
+                    case __GRAVITATIONAL_ACCELERATION_X__:
+                        return _gravitationalAccelerationX;
+                    case __GRAVITATIONAL_ACCELERATION_Y__:
+                        return _gravitationalAccelerationY;
+                    case __GRAVITATIONAL_ACCELERATION_Z__:
+                        return _gravitationalAccelerationZ;
+                    case __LINEAR_ACCELERATION_X__:
+                        return _linearAccelerationX;
+                    case __LINEAR_ACCELERATION_Y__:
+                        return _linearAccelerationY;
+                    case __LINEAR_ACCELERATION_Z__:
+                        return _linearAccelerationZ;
+                    case __MAGNETISM_X__:
+                        return _magnetismX;
+                    case __MAGNETISM_Y__:
+                        return _magnetismY;
+                    case __MAGNETISM_Z__:
+                        return _magnetismZ;
+                    default:
+                        return .0f;
+                }
+            }
+
+            void Update()
+            {
+                if (_bnoInitState)
+                {
+                    imu::Vector<3> euler = _bno->getVector(Adafruit_BNO055::VECTOR_EULER);
+                    imu::Vector<3> gyro = _bno->getVector(Adafruit_BNO055::VECTOR_GYROSCOPE);
+                    imu::Vector<3> grav = _bno->getVector(Adafruit_BNO055::VECTOR_GRAVITY);
+                    imu::Vector<3> linAccel = _bno->getVector(Adafruit_BNO055::VECTOR_LINEARACCEL);
+                    imu::Vector<3> magn = _bno->getVector(Adafruit_BNO055::VECTOR_MAGNETOMETER);
+                    _rotationalAngleX = euler.x();
+                    _rotationalAngleY = euler.y();
+                    _rotationalAngleZ = euler.z();
+                    _angularVelocityX = gyro.x();
+                    _angularVelocityY = gyro.y();
+                    _angularVelocityZ = gyro.z();
+                    _gravitationalAccelerationX = grav.x();
+                    _gravitationalAccelerationY = grav.y();
+                    _gravitationalAccelerationZ = grav.z();
+                    _linearAccelerationX = linAccel.x();
+                    _linearAccelerationY = linAccel.y();
+                    _linearAccelerationZ = linAccel.z();
+                    _magnetismX = magn.x();
+                    _magnetismY = magn.y();
+                    _magnetismZ = magn.z();
+                }
+                else
+                {
+                    _rotationalAngleX = .0f;
+                    _rotationalAngleY = .0f;
+                    _rotationalAngleZ = .0f;
+                    _angularVelocityX = .0f;
+                    _angularVelocityY = .0f;
+                    _angularVelocityZ = .0f;
+                    _gravitationalAccelerationX = .0f;
+                    _gravitationalAccelerationY = .0f;
+                    _gravitationalAccelerationZ = .0f;
+                    _linearAccelerationX = .0f;
+                    _linearAccelerationY = .0f;
+                    _linearAccelerationZ = .0f;
+                    _magnetismX = .0f;
+                    _magnetismY = .0f;
+                    _magnetismZ = .0f;
+                }
+            }
+            void AutoUpdateInterval(uint32_t interval)
+            {
+                threads.addThread(BNO055::AsyncUpdate, this);
+            }
+        };
+    }
+    
+    namespace Data
     {
-    private:
-        Module* _module;
-    public:
-        Temperature(Module* module)
+        class Temperature
         {
-            if (module->HasDataType(__TEMPERATURE__))
-                _module = module;
-            else
-                _module = nullptr;
-        }
+        private:
+            Modules::Module* _module;
+        public:
+            Temperature(Modules::Module* module)
+            {
+                if (module->HasDataType(__TEMPERATURE__))
+                    _module = module;
+                else
+                    _module = nullptr;
+            }
 
-        double Get()
-        {
-            return ((_module) ? _module->GetData(__TEMPERATURE__) : .0f);
-        }
-    };
+            double Get()
+            {
+                return ((_module) ? _module->GetData(__TEMPERATURE__) : .0f);
+            }
+        };
 
-    class Humidity
-    {
-    private:
-        Module* _module;
-    public:
-        Humidity(Module* module)
+        class Humidity
         {
-            if (module->HasDataType(__HUMIDITY__))
-                _module = module;
-            else
-                _module = nullptr;
-        }
+        private:
+            Modules::Module* _module;
+        public:
+            Humidity(Modules::Module* module)
+            {
+                if (module->HasDataType(__HUMIDITY__))
+                    _module = module;
+                else
+                    _module = nullptr;
+            }
 
-        double Get()
-        {
-            return ((_module) ? _module->GetData(__HUMIDITY__) : .0f);
-        }
-    };
+            double Get()
+            {
+                return ((_module) ? _module->GetData(__HUMIDITY__) : .0f);
+            }
+        };
 
-    class Pressure
-    {
-    private:
-        Module* _module;
-    public:
-        Pressure(Module* module)
+        class Pressure
         {
-            if (module->HasDataType(__PRESSURE__))
-                _module = module;
-            else
-                _module = nullptr;
-        }
+        private:
+            Modules::Module* _module;
+        public:
+            Pressure(Modules::Module* module)
+            {
+                if (module->HasDataType(__PRESSURE__))
+                    _module = module;
+                else
+                    _module = nullptr;
+            }
 
-        double Get()
-        {
-            return ((_module) ? _module->GetData(__PRESSURE__) : .0f);
-        }
-    };
+            double Get()
+            {
+                return ((_module) ? _module->GetData(__PRESSURE__) : .0f);
+            }
+        };
 
-    class Altitude
-    {
-    private:
-        Module* _module;
-    public:
-        Altitude(Module* module)
+        class Altitude
         {
-            if (module->HasDataType(__ALTITUDE__))
-                _module = module;
-            else
-                _module = nullptr;
-        }
+        private:
+            Modules::Module* _module;
+        public:
+            Altitude(Modules::Module* module)
+            {
+                if (module->HasDataType(__ALTITUDE__))
+                    _module = module;
+                else
+                    _module = nullptr;
+            }
 
-        double Get()
-        {
-            return ((_module) ? _module->GetData(__ALTITUDE__) : .0f);
-        }
-    };
+            double Get()
+            {
+                return ((_module) ? _module->GetData(__ALTITUDE__) : .0f);
+            }
+        };
+    }
 }
 
-
-#pragma region MODULE_REGION
-Orion::Module* Bme
-#pragma endregion
-
-
-#pragma region Data_REGION
-Orion::Temperature* Temperature;
-Orion::Humidity* Humidity;
-Orion::Pressure* Pressure;
-Orion::Altitude* Altitude;
-#pragma endregion
-
+Orion::Modules::Module* Bme;
+Orion::Data::Temperature* Temperature;
+Orion::Data::Humidity* Humidity;
+Orion::Data::Pressure* Pressure;
 
 void setup()
 {
-    #if defined(DEBUG_MODE)
-        Serial.begin(9600);
-    #endif
-    Bme = new Orion::BME280();
+    Serial.begin(9600);
+    delay(1000);
+    Bme = new Orion::Modules::BME280();
     Bme->AutoUpdateInterval(100);
-    Temperature = new Orion::Temperature(Bme);
-    Humidity = new Orion::Humidity(Bme);
-    Pressure = new Orion::Pressure(Bme);
-    Altitude = new Orion::Altitude(Bme);
+    Temperature = new Orion::Data::Temperature(Bme);
+    Humidity = new Orion::Data::Humidity(Bme);
+    Pressure = new Orion::Data::Pressure(Bme);
 }
 
 void loop()
 {
-    DEBUG(millis());
-    DEBUG(Temperature->Get());
-    DEBUG(" ");
-    DEBUG(Humidity->Get());
-    DEBUG(" ");
-    DEBUG(Pressure->Get());
-    DEBUG(" ");
-    DEBUGLN(Altitude->Get());
+    Serial.print(Temperature->Get());
+    Serial.print(" ");
+    Serial.print(Humidity->Get());
+    Serial.print(" ");
+    Serial.println(Pressure->Get());
+    delay(1000);
 }
