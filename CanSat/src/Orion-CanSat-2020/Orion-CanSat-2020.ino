@@ -59,9 +59,22 @@
 #define __LINEAR_ACCELERATION_Y__ 0x000F
 #define __LINEAR_ACCELERATION_Z__ 0x0010
 
-#define __MAGNETISM_X__ 0x0011
-#define __MAGNETISM_Y__ 0x0012
-#define __MAGNETISM_Z__ 0x0013
+#define __LINEAR_VELOCITY_X__ 0x0011
+#define __LINEAR_VELOCITY_Y__ 0x0012
+#define __LINEAR_VELOCITY_Z__ 0x0013
+
+#define __LINEAR_DISPLACMENT_X__ 0x0014
+#define __LINEAR_DISPLACMENT_Y__ 0x0015
+#define __LINEAR_DISPLACMENT_Z__ 0x0016
+
+#define __MAGNETISM_X__ 0x0017
+#define __MAGNETISM_Y__ 0x0018
+#define __MAGNETISM_Z__ 0x0019
+
+
+#define __X_AXIS__ 0x01
+#define __Y_AXIS__ 0x02
+#define __Z_AXIS__ 0x03
 
 
 namespace Orion
@@ -219,7 +232,24 @@ namespace Orion
             double _angularVelocityX = .0f, _angularVelocityY = .0f, _angularVelocityZ = .0f;
             double _gravitationalAccelerationX = .0f, _gravitationalAccelerationY = .0f, _gravitationalAccelerationZ = .0f;
             double _linearAccelerationX = .0f, _linearAccelerationY = .0f, _linearAccelerationZ = .0f;
+            double _normalizedAccelerationX = .0f, _normalizedAccelerationY = .0f, _normalizedAccelerationZ = .0f;
             double _magnetismX = .0f, _magnetismY = .0f, _magnetismZ = .0f;
+            double _velocityX = .0f, _velocityY = .0f, _velocityZ = .0f;
+            double _displacmentX = .0f, _displacmentY = .0f, _displacmentZ = .0f;
+            uint32_t _timerLast = 0, _timerNow = 0;
+            void CalculateSpeed()
+            {
+                _normalizedAccelerationX = _linearAccelerationX;
+                _normalizedAccelerationY = _linearAccelerationY;
+                _normalizedAccelerationZ = _linearAccelerationZ;
+                double deltaT = (_timerNow - _timerLast) / 1000.0;
+                _velocityX += _normalizedAccelerationX * deltaT;
+                _velocityY += _normalizedAccelerationY * deltaT;
+                _velocityZ += _normalizedAccelerationZ * deltaT;
+                _displacmentX += _velocityX * deltaT * 1.0 + (_normalizedAccelerationX * deltaT * deltaT * .5);
+                _displacmentY += _velocityY * deltaT * 1.0 + (_normalizedAccelerationY * deltaT * deltaT * .5);
+                _displacmentZ += _velocityZ * deltaT * 1.0 + (_normalizedAccelerationZ * deltaT * deltaT * .5);
+            }
         public:
             static bool InitBNO055(void* bno)
             {
@@ -230,7 +260,7 @@ namespace Orion
                 while (true)
                 {
                     Bno->Update();
-                    delay(100);
+                    delay(10);
                 }
             }
 
@@ -293,6 +323,18 @@ namespace Orion
                         return _linearAccelerationY;
                     case __LINEAR_ACCELERATION_Z__:
                         return _linearAccelerationZ;
+                    case __LINEAR_VELOCITY_X__:
+                        return _velocityX;
+                    case __LINEAR_VELOCITY_Y__:
+                        return _velocityY;
+                    case __LINEAR_VELOCITY_Z__:
+                        return _velocityZ;
+                    case __LINEAR_DISPLACMENT_X__:
+                        return _displacmentX;
+                    case __LINEAR_DISPLACMENT_Y__:
+                        return _displacmentY;
+                    case __LINEAR_DISPLACMENT_Z__:
+                        return _displacmentZ;
                     case __MAGNETISM_X__:
                         return _magnetismX;
                     case __MAGNETISM_Y__:
@@ -306,6 +348,8 @@ namespace Orion
 
             void Update()
             {
+                _timerLast = _timerNow;
+                _timerNow = millis();
                 if (_bnoInitState)
                 {
                     imu::Vector<3> euler = _bno->getVector(Adafruit_BNO055::VECTOR_EULER);
@@ -347,6 +391,7 @@ namespace Orion
                     _magnetismY = .0f;
                     _magnetismZ = .0f;
                 }
+                CalculateSpeed();
             }
             void AutoUpdateInterval(uint32_t interval)
             {
@@ -432,10 +477,49 @@ namespace Orion
                 return ((_module) ? _module->GetData(__ALTITUDE__) : .0f);
             }
         };
+
+        class RotationalAngle
+        {
+        private:
+            Modules::Module* _module;
+        public:
+            RotationalAngle(Modules::Module* module)
+            {
+                if (module->HasDataType(__ROTATIONAL_ANGLE_X__) && module->HasDataType(__ROTATIONAL_ANGLE_Y__) && module->HasDataType(__ROTATIONAL_ANGLE_Z__))
+                    _module = module;
+                else
+                    _module = nullptr;
+            }
+
+            double Get(uint8_t axis)
+            {
+                return ((_module) ? _module->GetData(__ROTATIONAL_ANGLE_X__ + axis - 1) : .0f);
+            }
+        };
+
+        class AngularVelocity
+        {
+        private:
+            Modules::Module* _module;
+        public:
+            AngularVelocity(Modules::Module* module)
+            {
+                if (module->HasDataType(__ANGULAR_VELOCITY_X__) && module->HasDataType(__ANGULAR_VELOCITY_Y__) && module->HasDataType(__ANGULAR_VELOCITY_Z__))
+                    _module = module;
+                else
+                    _module = nullptr;
+            }
+
+            double Get(uint8_t)
+            {
+                return ((_module) ? _module->GetData(__ANGULAR_VELOCITY_X__ + axis - 1) : .0f);
+            }
+        }
     }
 }
 
 Orion::Modules::Module* Bme;
+Orion::Modules::Module* Bno;
 Orion::Data::Temperature* Temperature;
 Orion::Data::Humidity* Humidity;
 Orion::Data::Pressure* Pressure;
@@ -446,17 +530,17 @@ void setup()
     delay(1000);
     Bme = new Orion::Modules::BME280();
     Bme->AutoUpdateInterval(100);
-    Temperature = new Orion::Data::Temperature(Bme);
-    Humidity = new Orion::Data::Humidity(Bme);
-    Pressure = new Orion::Data::Pressure(Bme);
+    Bno = new Orion::Modules::BNO055();
+    Bno->AutoUpdateInterval(100);
 }
 
 void loop()
 {
-    Serial.print(Temperature->Get());
-    Serial.print(" ");
-    Serial.print(Humidity->Get());
-    Serial.print(" ");
-    Serial.println(Pressure->Get());
+    Serial.print("X:");
+    Serial.print(Bno->GetData(__LINEAR_DISPLACMENT_X__));
+    Serial.print(" Y:");
+    Serial.print(Bno->GetData(__LINEAR_DISPLACMENT_Y__));
+    Serial.print(" Z:");
+    Serial.println(Bno->GetData(__LINEAR_DISPLACMENT_Z__));
     delay(1000);
 }
