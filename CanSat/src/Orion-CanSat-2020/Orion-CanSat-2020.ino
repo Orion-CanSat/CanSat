@@ -130,6 +130,209 @@ namespace Orion
                 return last;
             }
         };
+
+        class Vector
+        {
+        private:
+            int32_t *_vec;
+            uint32_t _size;
+
+        public:
+            Vector(int32_t size)
+            {
+                _vec = (int32_t*)malloc(_size * sizeof(int32_t));
+                _size = size;
+            }
+
+            int32_t& operator[](const uint32_t possition)
+            {
+                return _vec[possition];
+            }
+
+            friend class Matrix;
+
+            inline Vector operator+(Vector& v)
+            {
+                uint32_t n = this->_size;
+                Vector* res = new Vector(n);
+                for (uint32_t i = 0; i < n; i++) res->_vec[i] = this->_vec[i] + v._vec[i];
+                return *res;
+            }
+
+            inline Vector operator-()
+            {
+                Vector v = Vector(_size);
+                uint32_t n = this->_size;
+                for (uint32_t i = 0; i < n; i++) v._vec[i] = - this->_vec[i];
+                return v;
+            }
+
+            inline Vector operator-(Vector& v)
+            {
+                //if (this->_size != v._size) assert(false);
+                uint32_t n = this->_size;
+                Vector* res = new Vector(n);
+                for (uint32_t i = 0; i < n; i++) res->_vec[i] = this->_vec[i] - v._vec[i];
+                return *res;
+            }
+
+            inline int32_t operator*(Vector &v)
+            {
+                //if (this->_size != v._size) assert(false);
+                uint32_t n = this->_size;
+                int32_t res = 0;
+                for(uint32_t i = 0; i < n; i++) res += this->_vec[i] * v._vec[i];
+                return res;
+            }
+
+            inline Vector operator*(Matrix& m);
+
+            template<typename T> const inline Vector operator*(const T& a) const //a is a number
+            {
+                uint32_t n = this->_size;
+                Vector* res = new Vector(n);
+                for (uint32_t i = 0; i < n; i++) res->_vec[i] = this->_vec[i] * a;
+                return *res;
+            }
+        };
+
+        class Matrix
+        {
+        private:
+            int32_t** _mat = nullptr;
+            uint32_t _rows, _columns;
+
+        public:
+            Matrix(uint32_t rows, uint32_t columns)
+            {
+                _rows = rows; _columns = columns;
+                _mat = (int32_t**)malloc(_rows * sizeof(int32_t*));
+                for (int i = 0; i < _rows; i++)
+                    _mat[i] = (int32_t*)malloc(_columns * sizeof(int32_t));
+            }
+
+            class Proxy {
+            public:
+                Proxy(int32_t* _array) : _array(_array) { }
+
+                int32_t& operator[](const uint32_t index) {
+                    return _array[index];
+                }
+
+            private:
+                int32_t* _array;
+            };
+
+            Proxy operator[](const int32_t index) {
+                return Proxy(_mat[index]);
+            }
+
+            friend class Vector;
+
+            inline Matrix operator+(Matrix& m) //!DOESNT WORK
+            {
+                uint32_t r = this->_rows, c = this->_columns;
+                Matrix* res = new Matrix(r, c);
+                for(uint32_t i = 0; i < r; i++){
+                    for(uint32_t j = 0; j < c; j++){
+                        res->_mat[i][j] = this->_mat[i][j] +  m._mat[i][j];
+                    }
+                }
+                return *res;
+            }
+
+            inline Matrix operator-() //!DOESN'T WORK!!!
+            {
+                uint32_t r = _rows, c = _columns;
+                Matrix res = Matrix(r, c);
+                for (uint32_t i = 0; i < r; i++){
+                    for(uint32_t j = 0; j < c; j++){
+                        res._mat[i][j] = - this->_mat[i][j];
+                    }
+                }
+                return res;
+            }
+
+            inline Matrix operator-(Matrix& m) //!DOESN"T WORK
+            {
+                uint32_t r = this->_rows, c = this->_columns;
+                Matrix* res = new Matrix(r, c);
+                for(uint32_t i = 0; i < r; i++){
+                    for(uint32_t j = 0; j < c; j++){
+                        res->_mat[i][j] = this->_mat[i][j] -  m._mat[i][j];
+                    }
+                }
+                return *res;
+            }
+
+            inline Matrix operator*(Matrix& m)
+            {
+                uint32_t r = this->_rows, c = m._columns, n = this->_columns;
+                Matrix* res = new Matrix(r, c);
+                for(uint32_t i = 0; i < r; i++){
+                    for(uint32_t j = 0; j < c; j++){
+                        res->_mat[i][j] = 0;
+                        for(uint32_t k = 0; k < n; k++){
+                            res->_mat[i][j] += this->_mat[i][k] * m._mat[k][j];
+                        }
+                    }
+                }
+                return *res;
+            }
+
+            inline Vector operator*(Vector& v){
+                uint32_t r = this->_rows, c = this->_columns;
+                if(c == v._size){
+                    Vector* ans = new Vector(r);
+                    for(uint32_t i = 0; i < r; i++){
+                        ans->_vec[i] = 0;
+                        for(uint32_t k = 0; k < c; k++){
+                            ans->_vec[i] += this->_mat[i][k] * v._vec[k];
+                        }
+                    }
+                    return *ans;
+                }
+                else if(r == v._size){
+                    Vector* ans = new Vector(c);
+                    for(uint32_t i = 0; i < c; i++){
+                        ans->_vec[i] = 0;
+                        for(uint32_t k = 0; k < r; k++){
+                            ans->_vec[i] += this->_mat[k][i] * v._vec[k];
+                        }
+                    }
+                    return *ans;
+                }
+            }
+
+            template<typename T> const inline Matrix operator*(const T& a) const
+            {
+                uint32_t r = this->_rows, c = this->_columns;
+                Matrix* res = new Matrix(r, c);
+                for(uint32_t i = 0; i < r; i++){
+                    for(uint32_t j = 0; j < c; j++){
+                        res->_mat[i][j] = this->_mat[i][j] * a;
+                    }
+                }
+                return *res;
+            }
+        };
+
+        inline Vector Vector::operator*(Matrix& m)
+        {
+            return m * (*this);
+        }
+
+        template<typename T>
+        inline Vector operator*(const T lhs, const Vector& rhs)
+        {
+            return rhs * lhs;
+        }
+
+        template<typename T>
+        inline Matrix operator*(const T lhs, const Matrix& rhs)
+        {
+                return rhs * lhs;
+        }
     }
 
     namespace Modules
@@ -138,6 +341,10 @@ namespace Orion
 
         class Module
         {
+        protected:
+            void* _devicePtr = nullptr;
+            bool _initState = false;
+            uint32_t _timeOfLastUpdate = 0;
         public:
             Module() { }
             Module(noBaseClass) { }
@@ -149,17 +356,17 @@ namespace Orion
             virtual void Update() { }
             virtual void AutoUpdateInterval(uint32_t interval) { }
 
+            uint32_t GetLastUpdateTime() { return _timeOfLastUpdate; }
+
             virtual bool Transmit(uint32_t* message, uint32_t size) { return false; }
             virtual uint32_t* Receive(int32_t timout = -1) { return nullptr; }
-            ~Module();
+            virtual ~Module() { }
         };
 
         #if defined(__BME280__)
             class BME280 : virtual public Module
             {
             private:
-                Adafruit_BME280* _bme;
-                bool _bmeInitState = false;
                 double _temperature = .0f, _humidity = .0f, _pressure = .0f, _altitude = .0f;
             public:
                 static bool InitBME280(void* bme)
@@ -177,8 +384,8 @@ namespace Orion
 
                 BME280() : Module(nbc)
                 {
-                    _bme = new Adafruit_BME280();
-                    _bmeInitState = Utilities::Timeout::WaitTimeout(BME280::InitBME280, _bme, __MAX__TIMEOUT__FUNCTION__);
+                    _devicePtr = new Adafruit_BME280();
+                    _initState = Utilities::Timeout::WaitTimeout(BME280::InitBME280, _devicePtr, __MAX__TIMEOUT__FUNCTION__);
                 }
 
                 uint32_t GetType() { return __BME280__; }
@@ -214,12 +421,12 @@ namespace Orion
 
                 void Update()
                 {
-                    if (_bmeInitState)
+                    if (_initState)
                     {
-                        _temperature = (double)_bme->readTemperature();
-                        _humidity = (double)_bme->readHumidity();
-                        _pressure = (double)_bme->readPressure();
-                        _altitude = (double)_bme->readAltitude(1013.25);
+                        _temperature = (double)((Adafruit_BME280*)_devicePtr->readTemperature());
+                        _humidity = (double)((Adafruit_BME280*)_devicePtr->readHumidity());
+                        _pressure = (double)((Adafruit_BME280*)_devicePtr->readPressure());
+                        _altitude = (double)((Adafruit_BME280*)_devicePtr->readAltitude(1013.25));
                     }
                     else
                     {
@@ -228,6 +435,7 @@ namespace Orion
                         _pressure = .0f;
                         _altitude = .0f;
                     }
+                    _timeOfLastUpdate = millis();
                 }
                 void AutoUpdateInterval(uint32_t interval)
                 {
@@ -240,8 +448,6 @@ namespace Orion
             class BNO055 : virtual public Module
             {
             private:
-                Adafruit_BNO055* _bno;
-                bool _bnoInitState = false;
                 double _rotationalAngleX = .0f, _rotationalAngleY = .0f, _rotationalAngleZ = .0f;
                 double _angularVelocityX = .0f, _angularVelocityY = .0f, _angularVelocityZ = .0f;
                 double _gravitationalAccelerationX = .0f, _gravitationalAccelerationY = .0f, _gravitationalAccelerationZ = .0f;
@@ -250,13 +456,14 @@ namespace Orion
                 double _magnetismX = .0f, _magnetismY = .0f, _magnetismZ = .0f;
                 double _velocityX = .0f, _velocityY = .0f, _velocityZ = .0f;
                 double _displacmentX = .0f, _displacmentY = .0f, _displacmentZ = .0f;
-                uint32_t _timerLast = 0, _timerNow = 0;
+                uint32_t _timerLast = 0;
+                
                 void CalculateSpeed()
                 {
                     _normalizedAccelerationX = _linearAccelerationX;
                     _normalizedAccelerationY = _linearAccelerationY;
                     _normalizedAccelerationZ = _linearAccelerationZ;
-                    double deltaT = (_timerNow - _timerLast) / 1000.0;
+                    double deltaT = (_timeOfLastUpdate - _timerLast) / 1000.0;
                     _velocityX += _normalizedAccelerationX * deltaT;
                     _velocityY += _normalizedAccelerationY * deltaT;
                     _velocityZ += _normalizedAccelerationZ * deltaT;
@@ -264,6 +471,7 @@ namespace Orion
                     _displacmentY += _velocityY * deltaT * 1.0 + (_normalizedAccelerationY * deltaT * deltaT * .5);
                     _displacmentZ += _velocityZ * deltaT * 1.0 + (_normalizedAccelerationZ * deltaT * deltaT * .5);
                 }
+
             public:
                 static bool InitBNO055(void* bno)
                 {
@@ -280,8 +488,8 @@ namespace Orion
 
                 BNO055() : Module(nbc)
                 {
-                    _bno = new Adafruit_BNO055();
-                    _bnoInitState = Utilities::Timeout::WaitTimeout(BNO055::InitBNO055, _bno, __MAX__TIMEOUT__FUNCTION__);
+                    _devicePtr = new Adafruit_BNO055();
+                    _initState = Utilities::Timeout::WaitTimeout(BNO055::InitBNO055, _devicePtr, __MAX__TIMEOUT__FUNCTION__);
                 }
 
                 uint32_t GetType() { return __BNO055__; }
@@ -354,15 +562,14 @@ namespace Orion
 
                 void Update()
                 {
-                    _timerLast = _timerNow;
-                    _timerNow = millis();
-                    if (_bnoInitState)
+                    _timerLast = _timeOfLastUpdate;
+                    if (_initState)
                     {
-                        imu::Vector<3> euler = _bno->getVector(Adafruit_BNO055::VECTOR_EULER);
-                        imu::Vector<3> gyro = _bno->getVector(Adafruit_BNO055::VECTOR_GYROSCOPE);
-                        imu::Vector<3> grav = _bno->getVector(Adafruit_BNO055::VECTOR_GRAVITY);
-                        imu::Vector<3> linAccel = _bno->getVector(Adafruit_BNO055::VECTOR_LINEARACCEL);
-                        imu::Vector<3> magn = _bno->getVector(Adafruit_BNO055::VECTOR_MAGNETOMETER);
+                        imu::Vector<3> euler = (Adafruit_BNO055*)_devicePtr->getVector(Adafruit_BNO055::VECTOR_EULER);
+                        imu::Vector<3> gyro = (Adafruit_BNO055*)_devicePtr->getVector(Adafruit_BNO055::VECTOR_GYROSCOPE);
+                        imu::Vector<3> grav = (Adafruit_BNO055*)_devicePtr->getVector(Adafruit_BNO055::VECTOR_GRAVITY);
+                        imu::Vector<3> linAccel = (Adafruit_BNO055*)_devicePtr->getVector(Adafruit_BNO055::VECTOR_LINEARACCEL);
+                        imu::Vector<3> magn = (Adafruit_BNO055*)_devicePtr->getVector(Adafruit_BNO055::VECTOR_MAGNETOMETER);
                         _rotationalAngleX = euler.x();
                         _rotationalAngleY = euler.y();
                         _rotationalAngleZ = euler.z();
@@ -397,6 +604,7 @@ namespace Orion
                         _magnetismY = .0f;
                         _magnetismZ = .0f;
                     }
+                    _timeOfLastUpdate = millis();
                     CalculateSpeed();
                 }
                 void AutoUpdateInterval(uint32_t interval)
@@ -620,10 +828,10 @@ namespace Orion
     }
 }
 
-Orion::Modules::Module* Bno;
-Orion::Data::LinearAcceleration* acc;
+
 void setup()
 {
+
 }
 
 void loop()
