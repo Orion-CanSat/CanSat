@@ -131,6 +131,8 @@ namespace Orion
             }
         };
 
+        class Vector;
+        class Matrix;
         class Vector
         {
         private:
@@ -423,10 +425,10 @@ namespace Orion
                 {
                     if (_initState)
                     {
-                        _temperature = (double)((Adafruit_BME280*)_devicePtr->readTemperature());
-                        _humidity = (double)((Adafruit_BME280*)_devicePtr->readHumidity());
-                        _pressure = (double)((Adafruit_BME280*)_devicePtr->readPressure());
-                        _altitude = (double)((Adafruit_BME280*)_devicePtr->readAltitude(1013.25));
+                        _temperature = (double)(((Adafruit_BME280*)_devicePtr)->readTemperature());
+                        _humidity = (double)(((Adafruit_BME280*)_devicePtr)->readHumidity());
+                        _pressure = (double)(((Adafruit_BME280*)_devicePtr)->readPressure());
+                        _altitude = (double)(((Adafruit_BME280*)_devicePtr)->readAltitude(1013.25));
                     }
                     else
                     {
@@ -565,11 +567,11 @@ namespace Orion
                     _timerLast = _timeOfLastUpdate;
                     if (_initState)
                     {
-                        imu::Vector<3> euler = (Adafruit_BNO055*)_devicePtr->getVector(Adafruit_BNO055::VECTOR_EULER);
-                        imu::Vector<3> gyro = (Adafruit_BNO055*)_devicePtr->getVector(Adafruit_BNO055::VECTOR_GYROSCOPE);
-                        imu::Vector<3> grav = (Adafruit_BNO055*)_devicePtr->getVector(Adafruit_BNO055::VECTOR_GRAVITY);
-                        imu::Vector<3> linAccel = (Adafruit_BNO055*)_devicePtr->getVector(Adafruit_BNO055::VECTOR_LINEARACCEL);
-                        imu::Vector<3> magn = (Adafruit_BNO055*)_devicePtr->getVector(Adafruit_BNO055::VECTOR_MAGNETOMETER);
+                        imu::Vector<3> euler = ((Adafruit_BNO055*)_devicePtr)->getVector(Adafruit_BNO055::VECTOR_EULER);
+                        imu::Vector<3> gyro = ((Adafruit_BNO055*)_devicePtr)->getVector(Adafruit_BNO055::VECTOR_GYROSCOPE);
+                        imu::Vector<3> grav = ((Adafruit_BNO055*)_devicePtr)->getVector(Adafruit_BNO055::VECTOR_GRAVITY);
+                        imu::Vector<3> linAccel = ((Adafruit_BNO055*)_devicePtr)->getVector(Adafruit_BNO055::VECTOR_LINEARACCEL);
+                        imu::Vector<3> magn = ((Adafruit_BNO055*)_devicePtr)->getVector(Adafruit_BNO055::VECTOR_MAGNETOMETER);
                         _rotationalAngleX = euler.x();
                         _rotationalAngleY = euler.y();
                         _rotationalAngleZ = euler.z();
