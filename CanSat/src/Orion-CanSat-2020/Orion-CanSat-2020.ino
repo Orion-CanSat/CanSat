@@ -466,12 +466,12 @@ namespace Orion
                     _normalizedAccelerationY = _linearAccelerationY;
                     _normalizedAccelerationZ = _linearAccelerationZ;
                     double deltaT = (_timeOfLastUpdate - _timerLast) / 1000.0;
-                    _velocityX += _normalizedAccelerationX * deltaT;
-                    _velocityY += _normalizedAccelerationY * deltaT;
-                    _velocityZ += _normalizedAccelerationZ * deltaT;
                     _displacmentX += _velocityX * deltaT * 1.0 + (_normalizedAccelerationX * deltaT * deltaT * .5);
                     _displacmentY += _velocityY * deltaT * 1.0 + (_normalizedAccelerationY * deltaT * deltaT * .5);
                     _displacmentZ += _velocityZ * deltaT * 1.0 + (_normalizedAccelerationZ * deltaT * deltaT * .5);
+                    _velocityX += _normalizedAccelerationX * deltaT;
+                    _velocityY += _normalizedAccelerationY * deltaT;
+                    _velocityZ += _normalizedAccelerationZ * deltaT;
                 }
 
             public:
