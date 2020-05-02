@@ -68,10 +68,10 @@
 #define __LINEAR_VELOCITY_Y__ 0x0017
 #define __LINEAR_VELOCITY_Z__ 0x0018
 
-#define __LINEAR_DISPLACMENT__ 0x0019
-#define __LINEAR_DISPLACMENT_X__ 0x001A
-#define __LINEAR_DISPLACMENT_Y__ 0x001B
-#define __LINEAR_DISPLACMENT_Z__ 0x001C
+#define __LINEAR_DISPLACEMENT__ 0x0019
+#define __LINEAR_DISPLACEMENT_X__ 0x001A
+#define __LINEAR_DISPLACEMENT_Y__ 0x001B
+#define __LINEAR_DISPLACEMENT_Z__ 0x001C
 
 #define __MAGNETISM__ 0x001D
 #define __MAGNETISM_X__ 0x001E
@@ -457,7 +457,7 @@ namespace Orion
                 double _normalizedAccelerationX = .0f, _normalizedAccelerationY = .0f, _normalizedAccelerationZ = .0f;
                 double _magnetismX = .0f, _magnetismY = .0f, _magnetismZ = .0f;
                 double _velocityX = .0f, _velocityY = .0f, _velocityZ = .0f;
-                double _displacmentX = .0f, _displacmentY = .0f, _displacmentZ = .0f;
+                double _displacementX = .0f, _displacementY = .0f, _displacementZ = .0f;
                 uint32_t _timerLast = 0;
                 
                 void CalculateSpeed()
@@ -466,9 +466,9 @@ namespace Orion
                     _normalizedAccelerationY = _linearAccelerationY;
                     _normalizedAccelerationZ = _linearAccelerationZ;
                     double deltaT = (_timeOfLastUpdate - _timerLast) / 1000.0;
-                    _displacmentX += _velocityX * deltaT * 1.0 + (_normalizedAccelerationX * deltaT * deltaT * .5);
-                    _displacmentY += _velocityY * deltaT * 1.0 + (_normalizedAccelerationY * deltaT * deltaT * .5);
-                    _displacmentZ += _velocityZ * deltaT * 1.0 + (_normalizedAccelerationZ * deltaT * deltaT * .5);
+                    _displacementX += _velocityX * deltaT * 1.0 + (_normalizedAccelerationX * deltaT * deltaT * .5);
+                    _displacementY += _velocityY * deltaT * 1.0 + (_normalizedAccelerationY * deltaT * deltaT * .5);
+                    _displacementZ += _velocityZ * deltaT * 1.0 + (_normalizedAccelerationZ * deltaT * deltaT * .5);
                     _velocityX += _normalizedAccelerationX * deltaT;
                     _velocityY += _normalizedAccelerationY * deltaT;
                     _velocityZ += _normalizedAccelerationZ * deltaT;
@@ -504,7 +504,7 @@ namespace Orion
                         case __GRAVITATIONAL_ACCELERATION__:
                         case __LINEAR_ACCELERATION__:
                         case __LINEAR_VELOCITY__:
-                        case __LINEAR_DISPLACMENT__:
+                        case __LINEAR_DISPLACEMENT__:
                         case __MAGNETISM__:
                             return true;
                         default:
@@ -545,12 +545,12 @@ namespace Orion
                             return _velocityY;
                         case __LINEAR_VELOCITY_Z__:
                             return _velocityZ;
-                        case __LINEAR_DISPLACMENT_X__:
-                            return _displacmentX;
-                        case __LINEAR_DISPLACMENT_Y__:
-                            return _displacmentY;
-                        case __LINEAR_DISPLACMENT_Z__:
-                            return _displacmentZ;
+                        case __LINEAR_DISPLACEMENT_X__:
+                            return _displacementX;
+                        case __LINEAR_DISPLACEMENT_Y__:
+                            return _displacementY;
+                        case __LINEAR_DISPLACEMENT_Z__:
+                            return _displacementZ;
                         case __MAGNETISM_X__:
                             return _magnetismX;
                         case __MAGNETISM_Y__:
@@ -790,14 +790,14 @@ namespace Orion
             }
         };
 
-        class LinearDisplacment
+        class LinearDisplacement
         {
         private:
             Modules::Module* _module;
         public:
-            LinearDisplacment(Modules::Module* module)
+            LinearDisplacement(Modules::Module* module)
             {
-                if (module->HasDataType(__LINEAR_DISPLACMENT__))
+                if (module->HasDataType(__LINEAR_DISPLACEMENT__))
                     _module = module;
                 else
                     _module = nullptr;
@@ -805,7 +805,7 @@ namespace Orion
 
             double Get(uint8_t axis)
             {
-                return ((_module) ? _module->GetData(__LINEAR_DISPLACMENT__ + axis) : .0f);
+                return ((_module) ? _module->GetData(__LINEAR_DISPLACEMENT__ + axis) : .0f);
             }
         };
 
