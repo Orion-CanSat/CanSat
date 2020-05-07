@@ -474,6 +474,49 @@ namespace Orion
                     _velocityZ += _normalizedAccelerationZ * deltaT;
                 }
 
+                void NormalizeAcceleration()
+                {
+                    Utilities::Matrix MultiplicationMatrix1 = Utilities::Matrix(3, 3);
+                    Utilities::Matrix MultiplicationMatrix2 = Utilities::Matrix(3, 3);
+                    Utilities::Matrix MultiplicationMatrix3 = Utilities::Matrix(3, 3);
+                    Utilities::Vector Acceleration = Utilities::Vector(3);
+
+                    double anglex = _rotationalAngleX * 0.01745329251;
+                    double angley = _rotationalAngleY * 0.01745329251;
+                    double anglez = _rotationalAngleZ * 0.01745329251;
+
+                    MultiplicationMatrix1[0][0] = cos(-anglez);
+                    MultiplicationMatrix1[0][1] = sin(-anglez);
+                    MultiplicationMatrix1[1][0] = -sin(-anglez);
+                    MultiplicationMatrix1[1][1] = cos(anglez);
+                    MultiplicationMatrix1[0][2] = MultiplicationMatrix1[1][2] = MultiplicationMatrix1[2][0] = MultiplicationMatrix1[2][1] = 0;
+                    MultiplicationMatrix1[2][2] = 1;
+
+                    MultiplicationMatrix2[0][0] = cos(-angley);
+                    MultiplicationMatrix2[0][2] = -sin(-angley);
+                    MultiplicationMatrix2[2][0] = sin(-angley);
+                    MultiplicationMatrix2[2][2] = cos(-angley);
+                    MultiplicationMatrix2[0][2] = MultiplicationMatrix2[1][0] = MultiplicationMatrix2[1][2] = MultiplicationMatrix2[2][1] = 0;
+                    MultiplicationMatrix2[1][1] = 1;
+
+                    MultiplicationMatrix3[1][1] = cos(-anglex);
+                    MultiplicationMatrix3[1][2] = sin(-anglex);
+                    MultiplicationMatrix3[2][1] = -sin(-anglex);
+                    MultiplicationMatrix3[2][2] = cos(-anglex);
+                    MultiplicationMatrix3[0][1] = MultiplicationMatrix3[0][2] = MultiplicationMatrix3[1][0] = MultiplicationMatrix3[2][0] = 0;
+                    MultiplicationMatrix3[0][0] = 1;
+
+                    Acceleration[0] = _linearAccelerationX;
+                    Acceleration[1] = _linearAccelerationY;
+                    Acceleration[2] = _linearAccelerationZ;
+
+                    Acceleration = MultiplicationMatrix1 * MultiplicationMatrix2 * MultiplicationMatrix3 * Acceleration;
+
+                    _normalizedAccelerationX = Acceleration[0];
+                    _normalizedAccelerationY = Acceleration[1];
+                    _normalizedAccelerationZ = Acceleration[2];
+                }
+
             public:
                 static bool InitBNO055(void* bno)
                 {
@@ -607,6 +650,7 @@ namespace Orion
                         _magnetismZ = .0f;
                     }
                     _timeOfLastUpdate = millis();
+                    NormalizeAcceleration();
                     CalculateSpeed();
                 }
                 void AutoUpdateInterval(uint32_t interval)
