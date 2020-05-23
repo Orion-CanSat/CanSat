@@ -68,10 +68,10 @@
 #define __LINEAR_VELOCITY_Y__ 0x0017
 #define __LINEAR_VELOCITY_Z__ 0x0018
 
-#define __LINEAR_DISPLACMENT__ 0x0019
-#define __LINEAR_DISPLACMENT_X__ 0x001A
-#define __LINEAR_DISPLACMENT_Y__ 0x001B
-#define __LINEAR_DISPLACMENT_Z__ 0x001C
+#define __LINEAR_DISPLACEMENT__ 0x0019
+#define __LINEAR_DISPLACEMENT_X__ 0x001A
+#define __LINEAR_DISPLACEMENT_Y__ 0x001B
+#define __LINEAR_DISPLACEMENT_Z__ 0x001C
 
 #define __MAGNETISM__ 0x001D
 #define __MAGNETISM_X__ 0x001E
@@ -457,7 +457,7 @@ namespace Orion
                 double _normalizedAccelerationX = .0f, _normalizedAccelerationY = .0f, _normalizedAccelerationZ = .0f;
                 double _magnetismX = .0f, _magnetismY = .0f, _magnetismZ = .0f;
                 double _velocityX = .0f, _velocityY = .0f, _velocityZ = .0f;
-                double _displacmentX = .0f, _displacmentY = .0f, _displacmentZ = .0f;
+                double _displacementX = .0f, _displacementY = .0f, _displacementZ = .0f;
                 uint32_t _timerLast = 0;
                 
                 void CalculateSpeed()
@@ -466,12 +466,55 @@ namespace Orion
                     _normalizedAccelerationY = _linearAccelerationY;
                     _normalizedAccelerationZ = _linearAccelerationZ;
                     double deltaT = (_timeOfLastUpdate - _timerLast) / 1000.0;
+                    _displacementX += _velocityX * deltaT * 1.0 + (_normalizedAccelerationX * deltaT * deltaT * .5);
+                    _displacementY += _velocityY * deltaT * 1.0 + (_normalizedAccelerationY * deltaT * deltaT * .5);
+                    _displacementZ += _velocityZ * deltaT * 1.0 + (_normalizedAccelerationZ * deltaT * deltaT * .5);
                     _velocityX += _normalizedAccelerationX * deltaT;
                     _velocityY += _normalizedAccelerationY * deltaT;
                     _velocityZ += _normalizedAccelerationZ * deltaT;
-                    _displacmentX += _velocityX * deltaT * 1.0 + (_normalizedAccelerationX * deltaT * deltaT * .5);
-                    _displacmentY += _velocityY * deltaT * 1.0 + (_normalizedAccelerationY * deltaT * deltaT * .5);
-                    _displacmentZ += _velocityZ * deltaT * 1.0 + (_normalizedAccelerationZ * deltaT * deltaT * .5);
+                }
+
+                void NormalizeAcceleration()
+                {
+                    Utilities::Matrix MultiplicationMatrix1 = Utilities::Matrix(3, 3);
+                    Utilities::Matrix MultiplicationMatrix2 = Utilities::Matrix(3, 3);
+                    Utilities::Matrix MultiplicationMatrix3 = Utilities::Matrix(3, 3);
+                    Utilities::Vector Acceleration = Utilities::Vector(3);
+
+                    double anglex = _rotationalAngleX * 0.01745329251;
+                    double angley = _rotationalAngleY * 0.01745329251;
+                    double anglez = _rotationalAngleZ * 0.01745329251;
+
+                    MultiplicationMatrix1[0][0] = cos(-anglez);
+                    MultiplicationMatrix1[0][1] = sin(-anglez);
+                    MultiplicationMatrix1[1][0] = -sin(-anglez);
+                    MultiplicationMatrix1[1][1] = cos(anglez);
+                    MultiplicationMatrix1[0][2] = MultiplicationMatrix1[1][2] = MultiplicationMatrix1[2][0] = MultiplicationMatrix1[2][1] = 0;
+                    MultiplicationMatrix1[2][2] = 1;
+
+                    MultiplicationMatrix2[0][0] = cos(-angley);
+                    MultiplicationMatrix2[0][2] = -sin(-angley);
+                    MultiplicationMatrix2[2][0] = sin(-angley);
+                    MultiplicationMatrix2[2][2] = cos(-angley);
+                    MultiplicationMatrix2[0][2] = MultiplicationMatrix2[1][0] = MultiplicationMatrix2[1][2] = MultiplicationMatrix2[2][1] = 0;
+                    MultiplicationMatrix2[1][1] = 1;
+
+                    MultiplicationMatrix3[1][1] = cos(-anglex);
+                    MultiplicationMatrix3[1][2] = sin(-anglex);
+                    MultiplicationMatrix3[2][1] = -sin(-anglex);
+                    MultiplicationMatrix3[2][2] = cos(-anglex);
+                    MultiplicationMatrix3[0][1] = MultiplicationMatrix3[0][2] = MultiplicationMatrix3[1][0] = MultiplicationMatrix3[2][0] = 0;
+                    MultiplicationMatrix3[0][0] = 1;
+
+                    Acceleration[0] = _linearAccelerationX;
+                    Acceleration[1] = _linearAccelerationY;
+                    Acceleration[2] = _linearAccelerationZ;
+
+                    Acceleration = MultiplicationMatrix1 * MultiplicationMatrix2 * MultiplicationMatrix3 * Acceleration;
+
+                    _normalizedAccelerationX = Acceleration[0];
+                    _normalizedAccelerationY = Acceleration[1];
+                    _normalizedAccelerationZ = Acceleration[2];
                 }
 
             public:
@@ -504,7 +547,7 @@ namespace Orion
                         case __GRAVITATIONAL_ACCELERATION__:
                         case __LINEAR_ACCELERATION__:
                         case __LINEAR_VELOCITY__:
-                        case __LINEAR_DISPLACMENT__:
+                        case __LINEAR_DISPLACEMENT__:
                         case __MAGNETISM__:
                             return true;
                         default:
@@ -545,12 +588,12 @@ namespace Orion
                             return _velocityY;
                         case __LINEAR_VELOCITY_Z__:
                             return _velocityZ;
-                        case __LINEAR_DISPLACMENT_X__:
-                            return _displacmentX;
-                        case __LINEAR_DISPLACMENT_Y__:
-                            return _displacmentY;
-                        case __LINEAR_DISPLACMENT_Z__:
-                            return _displacmentZ;
+                        case __LINEAR_DISPLACEMENT_X__:
+                            return _displacementX;
+                        case __LINEAR_DISPLACEMENT_Y__:
+                            return _displacementY;
+                        case __LINEAR_DISPLACEMENT_Z__:
+                            return _displacementZ;
                         case __MAGNETISM_X__:
                             return _magnetismX;
                         case __MAGNETISM_Y__:
@@ -607,6 +650,7 @@ namespace Orion
                         _magnetismZ = .0f;
                     }
                     _timeOfLastUpdate = millis();
+                    NormalizeAcceleration();
                     CalculateSpeed();
                 }
                 void AutoUpdateInterval(uint32_t interval)
@@ -790,14 +834,14 @@ namespace Orion
             }
         };
 
-        class LinearDisplacment
+        class LinearDisplacement
         {
         private:
             Modules::Module* _module;
         public:
-            LinearDisplacment(Modules::Module* module)
+            LinearDisplacement(Modules::Module* module)
             {
-                if (module->HasDataType(__LINEAR_DISPLACMENT__))
+                if (module->HasDataType(__LINEAR_DISPLACEMENT__))
                     _module = module;
                 else
                     _module = nullptr;
@@ -805,7 +849,7 @@ namespace Orion
 
             double Get(uint8_t axis)
             {
-                return ((_module) ? _module->GetData(__LINEAR_DISPLACMENT__ + axis) : .0f);
+                return ((_module) ? _module->GetData(__LINEAR_DISPLACEMENT__ + axis) : .0f);
             }
         };
 
