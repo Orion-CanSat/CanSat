@@ -23,6 +23,7 @@
 
 #define __BME280__ 0x0001
 #define __BNO055__ 0x0002
+#define __SD__ 0x0101
 
 #if defined(__BME280__)
     #include <Adafruit_BME280.h>
@@ -30,6 +31,10 @@
 #if defined(__BNO055__)
     #include <Adafruit_BNO055.h>
     #include <utility/imumaths.h>
+#endif
+
+#if defined(__SD__)
+#include <SD.h>
 #endif
 
 #include <TeensyThreads.h>
@@ -86,49 +91,51 @@
 
 namespace Orion
 {
+    struct noBaseClass{} nbc;
+
     namespace Utilities
     {
         class Timeout
         {
             public:
-            static bool WaitTimeout(bool(*func)(void*), void* ptr, uint32_t duration)
-            {
-                bool last = false;
-                uint32_t startTime = millis();
-                while (!last && startTime + duration > millis())
-                    last = (*func)(ptr);
-                return last;
-            }
-            static bool WaitTimeout(bool(*func)(), uint32_t duration)
-            {
-                bool last = false;
-                uint32_t startTime = millis();
-                while (!last && startTime + duration > millis())
-                    last = (*func)();
-                return last;
-            }
+                static bool WaitTimeout(bool(*func)(void*), void* ptr, uint32_t duration)
+                {
+                    bool last = false;
+                    uint32_t startTime = millis();
+                    while (!last && startTime + duration > millis())
+                        last = (*func)(ptr);
+                    return last;
+                }
+                static bool WaitTimeout(bool(*func)(), uint32_t duration)
+                {
+                    bool last = false;
+                    uint32_t startTime = millis();
+                    while (!last && startTime + duration > millis())
+                        last = (*func)();
+                    return last;
+                }
 
-            static void WaitTimeout(void(*func)(void*), void* ptr, uint32_t duration)
-            {
-                uint32_t startTime = millis();
-                while (startTime + duration > millis())
-                    (*func)(ptr);
-            }
-            static void WaitTimeout(void(*func)(), uint32_t duration)
-            {
-                uint32_t startTime = millis();
-                while (startTime + duration > millis())
-                    (*func)();
-            }
+                static void WaitTimeout(void(*func)(void*), void* ptr, uint32_t duration)
+                {
+                    uint32_t startTime = millis();
+                    while (startTime + duration > millis())
+                        (*func)(ptr);
+                }
+                static void WaitTimeout(void(*func)(), uint32_t duration)
+                {
+                    uint32_t startTime = millis();
+                    while (startTime + duration > millis())
+                        (*func)();
+                }
 
-            static void* WaitTimeout(void*(*func)(), uint32_t duration)
-            {
-                void* last;
-                uint32_t startTime = millis();
-                while (!last && startTime + duration > millis())
-                    last = (*func)();
-                return last;
-            }
+                static void* WaitTimeout(void*(*func)(), uint32_t duration)
+                {
+                    void* last;
+                    uint32_t startTime = millis();
+                    while (!last && startTime + duration > millis())
+                        last = (*func)();
+                    return last;
+                }    
         };
 
         class Vector;
@@ -335,340 +342,410 @@ namespace Orion
         {
                 return rhs * lhs;
         }
+    
+        namespace Buffers
+        {
+            class Buffer
+            {
+            protected:
+                char* _buffer;
+                size_t _end, _size;
+                bool _bufferInitialized, _inUse;
+            public:
+                Buffer(size_t bufferSize)
+                {
+                    _inUse = true;
+                    _size = bufferSize;
+                    _inUse = 0;
+                    _buffer = (char*)malloc(_size * sizeof(char));
+                    _bufferInitialized = (_buffer != nullptr);
+                    _inUse = false;
+                }
+
+                bool Append(const char* str, size_t size)
+                {
+                    while (_inUse) delay(10);
+                    _inUse = true;
+                    if (_inUse + size < _size || !_bufferInitialized) return false;
+                    for (size_t i = _end; i < _end + size; i++)
+                        _buffer[i] = str[i - _end];
+                    _end += size;
+                    _inUse = false;
+                    return true;
+                }
+                bool Append(const char* str) { return Append(str, sizeof(str)); }
+
+                virtual void Use() { }
+                virtual void AutoUseInterval(uint32_t interval) { }
+
+                ~Buffer()
+                {
+                    free(_buffer);
+                }
+            };
+        }
     }
 
     namespace Modules
     {
-        struct noBaseClass{} nbc;
-
-        class Module
+        namespace DataModules
         {
-        protected:
-            void* _devicePtr = nullptr;
-            bool _initState = false;
-            uint32_t _timeOfLastUpdate = 0;
-        public:
-            Module() { }
-            Module(noBaseClass) { }
-
-            virtual uint32_t GetType() { return 0x00; }
-            virtual bool HasDataType(uint32_t type) { return false; }
-            virtual double GetData(uint32_t type) { return .0f; }
-            
-            virtual void Update() { }
-            virtual void AutoUpdateInterval(uint32_t interval) { }
-
-            uint32_t GetLastUpdateTime() { return _timeOfLastUpdate; }
-
-            virtual bool Transmit(uint32_t* message, uint32_t size) { return false; }
-            virtual uint32_t* Receive(int32_t timout = -1) { return nullptr; }
-            virtual ~Module() { }
-        };
-
-        #if defined(__BME280__)
-            class BME280 : virtual public Module
+            class Module
             {
-            private:
-                double _temperature = .0f, _humidity = .0f, _pressure = .0f, _altitude = .0f;
+            protected:
+                void* _devicePtr = nullptr;
+                bool _initState = false;
+                uint32_t _timeOfLastUpdate = 0;
+                uint32_t _updateInterval;
             public:
-                static bool InitBME280(void* bme)
-                {
-                    return (((Adafruit_BME280*)bme) ? ((Adafruit_BME280*)bme)->begin() : false);
-                }
-                static void AsyncUpdate(BME280* Bme)
-                {
-                    while (true)
-                    {
-                        Bme->Update();
-                        delay(100);
-                    }
-                }
+                Module() { }
+                Module(noBaseClass) { }
 
-                BME280() : Module(nbc)
-                {
-                    _devicePtr = new Adafruit_BME280();
-                    _initState = Utilities::Timeout::WaitTimeout(BME280::InitBME280, _devicePtr, __MAX__TIMEOUT__FUNCTION__);
-                }
-
-                uint32_t GetType() { return __BME280__; }
-                bool HasDataType(uint32_t type)
-                {
-                    switch(type)
-                    {
-                        case __TEMPERATURE__:
-                        case __HUMIDITY__:
-                        case __PRESSURE__:
-                        case __ALTITUDE__:
-                            return true;
-                        default:
-                            return false;
-                    }
-                }
-                double GetData(uint32_t type)
-                {
-                    switch (type)
-                    {
-                        case __TEMPERATURE__:
-                            return _temperature;
-                        case __HUMIDITY__:
-                            return _humidity;
-                        case __PRESSURE__:
-                            return _pressure;
-                        case __ALTITUDE__:
-                            return _altitude;
-                        default:
-                            return .0f;
-                    }
-                }
-
-                void Update()
-                {
-                    if (_initState)
-                    {
-                        _temperature = (double)(((Adafruit_BME280*)_devicePtr)->readTemperature());
-                        _humidity = (double)(((Adafruit_BME280*)_devicePtr)->readHumidity());
-                        _pressure = (double)(((Adafruit_BME280*)_devicePtr)->readPressure());
-                        _altitude = (double)(((Adafruit_BME280*)_devicePtr)->readAltitude(1013.25));
-                    }
-                    else
-                    {
-                        _temperature = .0f;
-                        _humidity = .0f;
-                        _pressure = .0f;
-                        _altitude = .0f;
-                    }
-                    _timeOfLastUpdate = millis();
-                }
-                void AutoUpdateInterval(uint32_t interval)
-                {
-                    threads.addThread(BME280::AsyncUpdate, this);
-                }
-            };
-        #endif
-
-        #if defined(__BNO055__)
-            class BNO055 : virtual public Module
-            {
-            private:
-                double _rotationalAngleX = .0f, _rotationalAngleY = .0f, _rotationalAngleZ = .0f;
-                double _angularVelocityX = .0f, _angularVelocityY = .0f, _angularVelocityZ = .0f;
-                double _gravitationalAccelerationX = .0f, _gravitationalAccelerationY = .0f, _gravitationalAccelerationZ = .0f;
-                double _linearAccelerationX = .0f, _linearAccelerationY = .0f, _linearAccelerationZ = .0f;
-                double _normalizedAccelerationX = .0f, _normalizedAccelerationY = .0f, _normalizedAccelerationZ = .0f;
-                double _magnetismX = .0f, _magnetismY = .0f, _magnetismZ = .0f;
-                double _velocityX = .0f, _velocityY = .0f, _velocityZ = .0f;
-                double _displacementX = .0f, _displacementY = .0f, _displacementZ = .0f;
-                uint32_t _timerLast = 0;
+                virtual uint32_t GetType() { return 0x00; }
+                virtual bool HasDataType(uint32_t type) { return false; }
+                virtual double GetData(uint32_t type) { return .0f; }
                 
-                void CalculateSpeed()
+                virtual void Update() { }
+                virtual void AutoUpdateInterval(uint32_t interval) { }
+
+                uint32_t GetLastUpdateTime() { return _timeOfLastUpdate; }
+
+                virtual bool Transmit(uint32_t* message, uint32_t size) { return false; }
+                virtual uint32_t* Receive(int32_t timout = -1) { return nullptr; }
+                virtual ~Module() { }
+            };
+
+            #if defined(__BME280__)
+                class BME280 : virtual public Module
                 {
-                    _normalizedAccelerationX = _linearAccelerationX;
-                    _normalizedAccelerationY = _linearAccelerationY;
-                    _normalizedAccelerationZ = _linearAccelerationZ;
-                    double deltaT = (_timeOfLastUpdate - _timerLast) / 1000.0;
-                    _displacementX += _velocityX * deltaT * 1.0 + (_normalizedAccelerationX * deltaT * deltaT * .5);
-                    _displacementY += _velocityY * deltaT * 1.0 + (_normalizedAccelerationY * deltaT * deltaT * .5);
-                    _displacementZ += _velocityZ * deltaT * 1.0 + (_normalizedAccelerationZ * deltaT * deltaT * .5);
-                    _velocityX += _normalizedAccelerationX * deltaT;
-                    _velocityY += _normalizedAccelerationY * deltaT;
-                    _velocityZ += _normalizedAccelerationZ * deltaT;
-                }
+                private:
+                    double _temperature = .0f, _humidity = .0f, _pressure = .0f, _altitude = .0f;
+                public:
+                    static bool InitBME280(void* bme)
+                    {
+                        return (((Adafruit_BME280*)bme) ? ((Adafruit_BME280*)bme)->begin() : false);
+                    }
+                    static void AsyncUpdate(BME280* Bme)
+                    {
+                        while (true)
+                        {
+                            Bme->Update();
+                            delay(Bme->_updateInterval);
+                        }
+                    }
 
-                void NormalizeAcceleration()
+                    BME280() : Module(nbc)
+                    {
+                        _devicePtr = new Adafruit_BME280();
+                        _initState = Utilities::Timeout::WaitTimeout(BME280::InitBME280, _devicePtr, __MAX__TIMEOUT__FUNCTION__);
+                    }
+
+                    uint32_t GetType() { return __BME280__; }
+                    bool HasDataType(uint32_t type)
+                    {
+                        switch(type)
+                        {
+                            case __TEMPERATURE__:
+                            case __HUMIDITY__:
+                            case __PRESSURE__:
+                            case __ALTITUDE__:
+                                return true;
+                            default:
+                                return false;
+                        }
+                    }
+                    double GetData(uint32_t type)
+                    {
+                        switch (type)
+                        {
+                            case __TEMPERATURE__:
+                                return _temperature;
+                            case __HUMIDITY__:
+                                return _humidity;
+                            case __PRESSURE__:
+                                return _pressure;
+                            case __ALTITUDE__:
+                                return _altitude;
+                            default:
+                                return .0f;
+                        }
+                    }
+
+                    void Update()
+                    {
+                        if (_initState)
+                        {
+                            _temperature = (double)(((Adafruit_BME280*)_devicePtr)->readTemperature());
+                            _humidity = (double)(((Adafruit_BME280*)_devicePtr)->readHumidity());
+                            _pressure = (double)(((Adafruit_BME280*)_devicePtr)->readPressure());
+                            _altitude = (double)(((Adafruit_BME280*)_devicePtr)->readAltitude(1013.25));
+                        }
+                        else
+                        {
+                            _temperature = .0f;
+                            _humidity = .0f;
+                            _pressure = .0f;
+                            _altitude = .0f;
+                        }
+                        _timeOfLastUpdate = millis();
+                    }
+                    void AutoUpdateInterval(uint32_t interval)
+                    {
+                        _updateInterval = interval;
+                        threads.addThread(BME280::AsyncUpdate, this);
+                    }
+                };
+            #endif
+
+            #if defined(__BNO055__)
+                class BNO055 : virtual public Module
                 {
-                    Utilities::Matrix MultiplicationMatrix1 = Utilities::Matrix(3, 3);
-                    Utilities::Matrix MultiplicationMatrix2 = Utilities::Matrix(3, 3);
-                    Utilities::Matrix MultiplicationMatrix3 = Utilities::Matrix(3, 3);
-                    Utilities::Vector Acceleration = Utilities::Vector(3);
+                private:
+                    double _rotationalAngleX = .0f, _rotationalAngleY = .0f, _rotationalAngleZ = .0f;
+                    double _angularVelocityX = .0f, _angularVelocityY = .0f, _angularVelocityZ = .0f;
+                    double _gravitationalAccelerationX = .0f, _gravitationalAccelerationY = .0f, _gravitationalAccelerationZ = .0f;
+                    double _linearAccelerationX = .0f, _linearAccelerationY = .0f, _linearAccelerationZ = .0f;
+                    double _normalizedAccelerationX = .0f, _normalizedAccelerationY = .0f, _normalizedAccelerationZ = .0f;
+                    double _magnetismX = .0f, _magnetismY = .0f, _magnetismZ = .0f;
+                    double _velocityX = .0f, _velocityY = .0f, _velocityZ = .0f;
+                    double _displacementX = .0f, _displacementY = .0f, _displacementZ = .0f;
+                    uint32_t _timerLast = 0;
+                    
+                    void CalculateSpeed()
+                    {
+                        _normalizedAccelerationX = _linearAccelerationX;
+                        _normalizedAccelerationY = _linearAccelerationY;
+                        _normalizedAccelerationZ = _linearAccelerationZ;
+                        double deltaT = (_timeOfLastUpdate - _timerLast) / 1000.0;
+                        _displacementX += _velocityX * deltaT * 1.0 + (_normalizedAccelerationX * deltaT * deltaT * .5);
+                        _displacementY += _velocityY * deltaT * 1.0 + (_normalizedAccelerationY * deltaT * deltaT * .5);
+                        _displacementZ += _velocityZ * deltaT * 1.0 + (_normalizedAccelerationZ * deltaT * deltaT * .5);
+                        _velocityX += _normalizedAccelerationX * deltaT;
+                        _velocityY += _normalizedAccelerationY * deltaT;
+                        _velocityZ += _normalizedAccelerationZ * deltaT;
+                    }
 
-                    double anglex = _rotationalAngleX * 0.01745329251;
-                    double angley = _rotationalAngleY * 0.01745329251;
-                    double anglez = _rotationalAngleZ * 0.01745329251;
+                    void NormalizeAcceleration()
+                    {
+                        Utilities::Matrix MultiplicationMatrix1 = Utilities::Matrix(3, 3);
+                        Utilities::Matrix MultiplicationMatrix2 = Utilities::Matrix(3, 3);
+                        Utilities::Matrix MultiplicationMatrix3 = Utilities::Matrix(3, 3);
+                        Utilities::Vector Acceleration = Utilities::Vector(3);
 
-                    MultiplicationMatrix1[0][0] = cos(-anglez);
-                    MultiplicationMatrix1[0][1] = sin(-anglez);
-                    MultiplicationMatrix1[1][0] = -sin(-anglez);
-                    MultiplicationMatrix1[1][1] = cos(anglez);
-                    MultiplicationMatrix1[0][2] = MultiplicationMatrix1[1][2] = MultiplicationMatrix1[2][0] = MultiplicationMatrix1[2][1] = 0;
-                    MultiplicationMatrix1[2][2] = 1;
+                        double anglex = _rotationalAngleX * 0.01745329251;
+                        double angley = _rotationalAngleY * 0.01745329251;
+                        double anglez = _rotationalAngleZ * 0.01745329251;
 
-                    MultiplicationMatrix2[0][0] = cos(-angley);
-                    MultiplicationMatrix2[0][2] = -sin(-angley);
-                    MultiplicationMatrix2[2][0] = sin(-angley);
-                    MultiplicationMatrix2[2][2] = cos(-angley);
-                    MultiplicationMatrix2[0][2] = MultiplicationMatrix2[1][0] = MultiplicationMatrix2[1][2] = MultiplicationMatrix2[2][1] = 0;
-                    MultiplicationMatrix2[1][1] = 1;
+                        MultiplicationMatrix1[0][0] = cos(-anglez);
+                        MultiplicationMatrix1[0][1] = sin(-anglez);
+                        MultiplicationMatrix1[1][0] = -sin(-anglez);
+                        MultiplicationMatrix1[1][1] = cos(anglez);
+                        MultiplicationMatrix1[0][2] = MultiplicationMatrix1[1][2] = MultiplicationMatrix1[2][0] = MultiplicationMatrix1[2][1] = 0;
+                        MultiplicationMatrix1[2][2] = 1;
 
-                    MultiplicationMatrix3[1][1] = cos(-anglex);
-                    MultiplicationMatrix3[1][2] = sin(-anglex);
-                    MultiplicationMatrix3[2][1] = -sin(-anglex);
-                    MultiplicationMatrix3[2][2] = cos(-anglex);
-                    MultiplicationMatrix3[0][1] = MultiplicationMatrix3[0][2] = MultiplicationMatrix3[1][0] = MultiplicationMatrix3[2][0] = 0;
-                    MultiplicationMatrix3[0][0] = 1;
+                        MultiplicationMatrix2[0][0] = cos(-angley);
+                        MultiplicationMatrix2[0][2] = -sin(-angley);
+                        MultiplicationMatrix2[2][0] = sin(-angley);
+                        MultiplicationMatrix2[2][2] = cos(-angley);
+                        MultiplicationMatrix2[0][2] = MultiplicationMatrix2[1][0] = MultiplicationMatrix2[1][2] = MultiplicationMatrix2[2][1] = 0;
+                        MultiplicationMatrix2[1][1] = 1;
 
-                    Acceleration[0] = _linearAccelerationX;
-                    Acceleration[1] = _linearAccelerationY;
-                    Acceleration[2] = _linearAccelerationZ;
+                        MultiplicationMatrix3[1][1] = cos(-anglex);
+                        MultiplicationMatrix3[1][2] = sin(-anglex);
+                        MultiplicationMatrix3[2][1] = -sin(-anglex);
+                        MultiplicationMatrix3[2][2] = cos(-anglex);
+                        MultiplicationMatrix3[0][1] = MultiplicationMatrix3[0][2] = MultiplicationMatrix3[1][0] = MultiplicationMatrix3[2][0] = 0;
+                        MultiplicationMatrix3[0][0] = 1;
 
-                    Acceleration = MultiplicationMatrix1 * MultiplicationMatrix2 * MultiplicationMatrix3 * Acceleration;
+                        Acceleration[0] = _linearAccelerationX;
+                        Acceleration[1] = _linearAccelerationY;
+                        Acceleration[2] = _linearAccelerationZ;
 
-                    _normalizedAccelerationX = Acceleration[0];
-                    _normalizedAccelerationY = Acceleration[1];
-                    _normalizedAccelerationZ = Acceleration[2];
-                }
+                        Acceleration = MultiplicationMatrix1 * MultiplicationMatrix2 * MultiplicationMatrix3 * Acceleration;
 
+                        _normalizedAccelerationX = Acceleration[0];
+                        _normalizedAccelerationY = Acceleration[1];
+                        _normalizedAccelerationZ = Acceleration[2];
+                    }
+
+                public:
+                    static bool InitBNO055(void* bno)
+                    {
+                        return (((Adafruit_BNO055*)bno) ? ((Adafruit_BNO055*)bno)->begin() : false);
+                    }
+                    static void AsyncUpdate(BNO055* Bno)
+                    {
+                        while (true)
+                        {
+                            Bno->Update();
+                            delay(Bno->_updateInterval);
+                        }
+                    }
+
+                    BNO055() : Module(nbc)
+                    {
+                        _devicePtr = new Adafruit_BNO055();
+                        _initState = Utilities::Timeout::WaitTimeout(BNO055::InitBNO055, _devicePtr, __MAX__TIMEOUT__FUNCTION__);
+                    }
+
+                    uint32_t GetType() { return __BNO055__; }
+                    bool HasDataType(uint32_t type)
+                    {
+                        switch (type)
+                        {
+                            case __ROTATIONAL_ANGLE__:
+                            case __ANGULAR_VELOCITY__:
+                            case __GRAVITATIONAL_ACCELERATION__:
+                            case __LINEAR_ACCELERATION__:
+                            case __LINEAR_VELOCITY__:
+                            case __LINEAR_DISPLACEMENT__:
+                            case __MAGNETISM__:
+                                return true;
+                            default:
+                                return false;
+                        }
+                    }
+                    double GetData(uint32_t type)
+                    {
+                        switch (type)
+                        {
+                            case __ROTATIONAL_ANGLE_X__:
+                                return _rotationalAngleX;
+                            case __ROTATIONAL_ANGLE_Y__:
+                                return _rotationalAngleY;
+                            case __ROTATIONAL_ANGLE_Z__:
+                                return _rotationalAngleZ;
+                            case __ANGULAR_VELOCITY_X__:
+                                return _angularVelocityX;
+                            case __ANGULAR_VELOCITY_Y__:
+                                return _angularVelocityY;
+                            case __ANGULAR_VELOCITY_Z__:
+                                return _angularVelocityZ;
+                            case __GRAVITATIONAL_ACCELERATION_X__:
+                                return _gravitationalAccelerationX;
+                            case __GRAVITATIONAL_ACCELERATION_Y__:
+                                return _gravitationalAccelerationY;
+                            case __GRAVITATIONAL_ACCELERATION_Z__:
+                                return _gravitationalAccelerationZ;
+                            case __LINEAR_ACCELERATION_X__:
+                                return _linearAccelerationX;
+                            case __LINEAR_ACCELERATION_Y__:
+                                return _linearAccelerationY;
+                            case __LINEAR_ACCELERATION_Z__:
+                                return _linearAccelerationZ;
+                            case __LINEAR_VELOCITY_X__:
+                                return _velocityX;
+                            case __LINEAR_VELOCITY_Y__:
+                                return _velocityY;
+                            case __LINEAR_VELOCITY_Z__:
+                                return _velocityZ;
+                            case __LINEAR_DISPLACEMENT_X__:
+                                return _displacementX;
+                            case __LINEAR_DISPLACEMENT_Y__:
+                                return _displacementY;
+                            case __LINEAR_DISPLACEMENT_Z__:
+                                return _displacementZ;
+                            case __MAGNETISM_X__:
+                                return _magnetismX;
+                            case __MAGNETISM_Y__:
+                                return _magnetismY;
+                            case __MAGNETISM_Z__:
+                                return _magnetismZ;
+                            default:
+                                return .0f;
+                        }
+                    }
+
+                    void Update()
+                    {
+                        _timerLast = _timeOfLastUpdate;
+                        if (_initState)
+                        {
+                            imu::Vector<3> euler = ((Adafruit_BNO055*)_devicePtr)->getVector(Adafruit_BNO055::VECTOR_EULER);
+                            imu::Vector<3> gyro = ((Adafruit_BNO055*)_devicePtr)->getVector(Adafruit_BNO055::VECTOR_GYROSCOPE);
+                            imu::Vector<3> grav = ((Adafruit_BNO055*)_devicePtr)->getVector(Adafruit_BNO055::VECTOR_GRAVITY);
+                            imu::Vector<3> linAccel = ((Adafruit_BNO055*)_devicePtr)->getVector(Adafruit_BNO055::VECTOR_LINEARACCEL);
+                            imu::Vector<3> magn = ((Adafruit_BNO055*)_devicePtr)->getVector(Adafruit_BNO055::VECTOR_MAGNETOMETER);
+                            _rotationalAngleX = euler.x();
+                            _rotationalAngleY = euler.y();
+                            _rotationalAngleZ = euler.z();
+                            _angularVelocityX = gyro.x();
+                            _angularVelocityY = gyro.y();
+                            _angularVelocityZ = gyro.z();
+                            _gravitationalAccelerationX = grav.x();
+                            _gravitationalAccelerationY = grav.y();
+                            _gravitationalAccelerationZ = grav.z();
+                            _linearAccelerationX = linAccel.x();
+                            _linearAccelerationY = linAccel.y();
+                            _linearAccelerationZ = linAccel.z();
+                            _magnetismX = magn.x();
+                            _magnetismY = magn.y();
+                            _magnetismZ = magn.z();
+                        }
+                        else
+                        {
+                            _rotationalAngleX = .0f;
+                            _rotationalAngleY = .0f;
+                            _rotationalAngleZ = .0f;
+                            _angularVelocityX = .0f;
+                            _angularVelocityY = .0f;
+                            _angularVelocityZ = .0f;
+                            _gravitationalAccelerationX = .0f;
+                            _gravitationalAccelerationY = .0f;
+                            _gravitationalAccelerationZ = .0f;
+                            _linearAccelerationX = .0f;
+                            _linearAccelerationY = .0f;
+                            _linearAccelerationZ = .0f;
+                            _magnetismX = .0f;
+                            _magnetismY = .0f;
+                            _magnetismZ = .0f;
+                        }
+                        _timeOfLastUpdate = millis();
+                        NormalizeAcceleration();
+                        CalculateSpeed();
+                    }
+                    void AutoUpdateInterval(uint32_t interval)
+                    {
+                        _updateInterval = interval;
+                        threads.addThread(BNO055::AsyncUpdate, this);
+                    }
+                };
+            #endif
+        }
+    
+        namespace IOModules
+        {
+            class SD : virtual public Utilities::Buffers::Buffer
+            {
             public:
-                static bool InitBNO055(void* bno)
+                SD(size_t bufferSize, int chipSelect) : Buffer(bufferSize)
                 {
-                    return (((Adafruit_BNO055*)bno) ? ((Adafruit_BNO055*)bno)->begin() : false);
-                }
-                static void AsyncUpdate(BNO055* Bno)
-                {
-                    while (true)
-                    {
-                        Bno->Update();
-                        delay(10);
-                    }
-                }
 
-                BNO055() : Module(nbc)
-                {
-                    _devicePtr = new Adafruit_BNO055();
-                    _initState = Utilities::Timeout::WaitTimeout(BNO055::InitBNO055, _devicePtr, __MAX__TIMEOUT__FUNCTION__);
-                }
-
-                uint32_t GetType() { return __BNO055__; }
-                bool HasDataType(uint32_t type)
-                {
-                    switch (type)
-                    {
-                        case __ROTATIONAL_ANGLE__:
-                        case __ANGULAR_VELOCITY__:
-                        case __GRAVITATIONAL_ACCELERATION__:
-                        case __LINEAR_ACCELERATION__:
-                        case __LINEAR_VELOCITY__:
-                        case __LINEAR_DISPLACEMENT__:
-                        case __MAGNETISM__:
-                            return true;
-                        default:
-                            return false;
-                    }
-                }
-                double GetData(uint32_t type)
-                {
-                    switch (type)
-                    {
-                        case __ROTATIONAL_ANGLE_X__:
-                            return _rotationalAngleX;
-                        case __ROTATIONAL_ANGLE_Y__:
-                            return _rotationalAngleY;
-                        case __ROTATIONAL_ANGLE_Z__:
-                            return _rotationalAngleZ;
-                        case __ANGULAR_VELOCITY_X__:
-                            return _angularVelocityX;
-                        case __ANGULAR_VELOCITY_Y__:
-                            return _angularVelocityY;
-                        case __ANGULAR_VELOCITY_Z__:
-                            return _angularVelocityZ;
-                        case __GRAVITATIONAL_ACCELERATION_X__:
-                            return _gravitationalAccelerationX;
-                        case __GRAVITATIONAL_ACCELERATION_Y__:
-                            return _gravitationalAccelerationY;
-                        case __GRAVITATIONAL_ACCELERATION_Z__:
-                            return _gravitationalAccelerationZ;
-                        case __LINEAR_ACCELERATION_X__:
-                            return _linearAccelerationX;
-                        case __LINEAR_ACCELERATION_Y__:
-                            return _linearAccelerationY;
-                        case __LINEAR_ACCELERATION_Z__:
-                            return _linearAccelerationZ;
-                        case __LINEAR_VELOCITY_X__:
-                            return _velocityX;
-                        case __LINEAR_VELOCITY_Y__:
-                            return _velocityY;
-                        case __LINEAR_VELOCITY_Z__:
-                            return _velocityZ;
-                        case __LINEAR_DISPLACEMENT_X__:
-                            return _displacementX;
-                        case __LINEAR_DISPLACEMENT_Y__:
-                            return _displacementY;
-                        case __LINEAR_DISPLACEMENT_Z__:
-                            return _displacementZ;
-                        case __MAGNETISM_X__:
-                            return _magnetismX;
-                        case __MAGNETISM_Y__:
-                            return _magnetismY;
-                        case __MAGNETISM_Z__:
-                            return _magnetismZ;
-                        default:
-                            return .0f;
-                    }
-                }
-
-                void Update()
-                {
-                    _timerLast = _timeOfLastUpdate;
-                    if (_initState)
-                    {
-                        imu::Vector<3> euler = ((Adafruit_BNO055*)_devicePtr)->getVector(Adafruit_BNO055::VECTOR_EULER);
-                        imu::Vector<3> gyro = ((Adafruit_BNO055*)_devicePtr)->getVector(Adafruit_BNO055::VECTOR_GYROSCOPE);
-                        imu::Vector<3> grav = ((Adafruit_BNO055*)_devicePtr)->getVector(Adafruit_BNO055::VECTOR_GRAVITY);
-                        imu::Vector<3> linAccel = ((Adafruit_BNO055*)_devicePtr)->getVector(Adafruit_BNO055::VECTOR_LINEARACCEL);
-                        imu::Vector<3> magn = ((Adafruit_BNO055*)_devicePtr)->getVector(Adafruit_BNO055::VECTOR_MAGNETOMETER);
-                        _rotationalAngleX = euler.x();
-                        _rotationalAngleY = euler.y();
-                        _rotationalAngleZ = euler.z();
-                        _angularVelocityX = gyro.x();
-                        _angularVelocityY = gyro.y();
-                        _angularVelocityZ = gyro.z();
-                        _gravitationalAccelerationX = grav.x();
-                        _gravitationalAccelerationY = grav.y();
-                        _gravitationalAccelerationZ = grav.z();
-                        _linearAccelerationX = linAccel.x();
-                        _linearAccelerationY = linAccel.y();
-                        _linearAccelerationZ = linAccel.z();
-                        _magnetismX = magn.x();
-                        _magnetismY = magn.y();
-                        _magnetismZ = magn.z();
-                    }
-                    else
-                    {
-                        _rotationalAngleX = .0f;
-                        _rotationalAngleY = .0f;
-                        _rotationalAngleZ = .0f;
-                        _angularVelocityX = .0f;
-                        _angularVelocityY = .0f;
-                        _angularVelocityZ = .0f;
-                        _gravitationalAccelerationX = .0f;
-                        _gravitationalAccelerationY = .0f;
-                        _gravitationalAccelerationZ = .0f;
-                        _linearAccelerationX = .0f;
-                        _linearAccelerationY = .0f;
-                        _linearAccelerationZ = .0f;
-                        _magnetismX = .0f;
-                        _magnetismY = .0f;
-                        _magnetismZ = .0f;
-                    }
-                    _timeOfLastUpdate = millis();
-                    NormalizeAcceleration();
-                    CalculateSpeed();
-                }
-                void AutoUpdateInterval(uint32_t interval)
-                {
-                    threads.addThread(BNO055::AsyncUpdate, this);
                 }
             };
-        #endif
+        }
     }
     
     namespace Data
     {
-        class Temperature
+        class Data
         {
-        private:
-            Modules::Module* _module;
+        protected:
+            Modules::DataModules::Module* _module;
         public:
-            Temperature(Modules::Module* module)
+            Data() { }
+            Data(noBaseClass) { }
+
+            virtual uint32_t GetType() { return 0x00; }
+            virtual double GetData(uint32_t selector) { return .0f; }
+
+            virtual ~Data() { }
+        };
+
+        class Temperature : virtual public Data
+        {
+        public:
+            Temperature(Modules::DataModules::Module* module) : Data(nbc)
             {
                 if (module->HasDataType(__TEMPERATURE__))
                     _module = module;
@@ -676,18 +753,14 @@ namespace Orion
                     _module = nullptr;
             }
 
-            double Get()
-            {
-                return ((_module) ? _module->GetData(__TEMPERATURE__) : .0f);
-            }
+            uint32_t GetType() { return __TEMPERATURE__; }
+            double GetData(uint32_t selector) { return ((_module) ? _module->GetData(__TEMPERATURE__) : .0f); }
         };
 
-        class Humidity
+        class Humidity : virtual public Data
         {
-        private:
-            Modules::Module* _module;
         public:
-            Humidity(Modules::Module* module)
+            Humidity(Modules::DataModules::Module* module) : Data(nbc)
             {
                 if (module->HasDataType(__HUMIDITY__))
                     _module = module;
@@ -695,18 +768,14 @@ namespace Orion
                     _module = nullptr;
             }
 
-            double Get()
-            {
-                return ((_module) ? _module->GetData(__HUMIDITY__) : .0f);
-            }
+            uint32_t GetType() { return __HUMIDITY__; }
+            double GetData(uint32_t selector) { return ((_module) ? _module->GetData(__HUMIDITY__) : .0f); }
         };
 
-        class Pressure
+        class Pressure : virtual public Data
         {
-        private:
-            Modules::Module* _module;
         public:
-            Pressure(Modules::Module* module)
+            Pressure(Modules::DataModules::Module* module) : Data(nbc)
             {
                 if (module->HasDataType(__PRESSURE__))
                     _module = module;
@@ -714,18 +783,14 @@ namespace Orion
                     _module = nullptr;
             }
 
-            double Get()
-            {
-                return ((_module) ? _module->GetData(__PRESSURE__) : .0f);
-            }
+            uint32_t GetType() { return __PRESSURE__; }
+            double GetData(uint32_t selector) { return ((_module) ? _module->GetData(__PRESSURE__) : .0f); }
         };
 
-        class Altitude
+        class Altitude : virtual public Data
         {
-        private:
-            Modules::Module* _module;
         public:
-            Altitude(Modules::Module* module)
+            Altitude(Modules::DataModules::Module* module) : Data(nbc)
             {
                 if (module->HasDataType(__ALTITUDE__))
                     _module = module;
@@ -733,18 +798,14 @@ namespace Orion
                     _module = nullptr;
             }
 
-            double Get()
-            {
-                return ((_module) ? _module->GetData(__ALTITUDE__) : .0f);
-            }
+            uint32_t GetType() { return __ALTITUDE__; }
+            double GetData(uint32_t selector) { return ((_module) ? _module->GetData(__ALTITUDE__) : .0f); }
         };
 
-        class RotationalAngle
+        class RotationalAngle : virtual public Data
         {
-        private:
-            Modules::Module* _module;
         public:
-            RotationalAngle(Modules::Module* module)
+            RotationalAngle(Modules::DataModules::Module* module) : Data(nbc)
             {
                 if (module->HasDataType(__ROTATIONAL_ANGLE__))
                     _module = module;
@@ -752,18 +813,14 @@ namespace Orion
                     _module = nullptr;
             }
 
-            double Get(uint8_t axis)
-            {
-                return ((_module) ? _module->GetData(__ROTATIONAL_ANGLE__ + axis) : .0f);
-            }
+            uint32_t GetType() { return __ROTATIONAL_ANGLE__; }
+            double GetData(uint32_t selector) { return ((_module) ? _module->GetData(__ROTATIONAL_ANGLE__ + selector) : .0f); }
         };
 
-        class AngularVelocity
+        class AngularVelocity : virtual public Data
         {
-        private:
-            Modules::Module* _module;
         public:
-            AngularVelocity(Modules::Module* module)
+            AngularVelocity(Modules::DataModules::Module* module) : Data(nbc)
             {
                 if (module->HasDataType(__ANGULAR_VELOCITY__))
                     _module = module;
@@ -771,18 +828,14 @@ namespace Orion
                     _module = nullptr;
             }
 
-            double Get(uint8_t axis)
-            {
-                return ((_module) ? _module->GetData(__ANGULAR_VELOCITY__ + axis) : .0f);
-            }
+            uint32_t GetType() { return __ANGULAR_VELOCITY__; }
+            double GetData(uint32_t selector) { return ((_module) ? _module->GetData(__ANGULAR_VELOCITY__ + selector) : .0f); }
         };
 
-        class GravitationalAcceleration
+        class GravitationalAcceleration : virtual public Data
         {
-        private:
-            Modules::Module* _module;
         public:
-            GravitationalAcceleration(Modules::Module* module)
+            GravitationalAcceleration(Modules::DataModules::Module* module) : Data(nbc)
             {
                 if (module->HasDataType(__GRAVITATIONAL_ACCELERATION__))
                     _module = module;
@@ -790,18 +843,14 @@ namespace Orion
                     _module = nullptr;
             }
 
-            double Get(uint8_t axis)
-            {
-                return ((_module) ? _module->GetData(__GRAVITATIONAL_ACCELERATION__ + axis) : .0f);
-            }
+            uint32_t GetType() { return __GRAVITATIONAL_ACCELERATION__; }
+            double GetData(uint32_t selector) { return ((_module) ? _module->GetData(__GRAVITATIONAL_ACCELERATION__ + selector) : .0f); }
         };
 
-        class LinearAcceleration
+        class LinearAcceleration : virtual public Data
         {
-        private:
-            Modules::Module* _module;
         public:
-            LinearAcceleration(Modules::Module* module)
+            LinearAcceleration(Modules::DataModules::Module* module) : Data(nbc)
             {
                 if (module->HasDataType(__LINEAR_ACCELERATION__))
                     _module = module;
@@ -809,18 +858,14 @@ namespace Orion
                     _module = nullptr;
             }
 
-            double Get(uint8_t axis)
-            {
-                return ((_module) ? _module->GetData(__LINEAR_ACCELERATION__ + axis) : .0f);
-            }
+            uint32_t GetType() { return __LINEAR_ACCELERATION__; }
+            double GetData(uint32_t selector) { return ((_module) ? _module->GetData(__LINEAR_ACCELERATION__ + selector) : .0f); }
         };
 
-        class LinearVelocity
+        class LinearVelocity : virtual public Data
         {
-        private:
-            Modules::Module* _module;
         public:
-            LinearVelocity(Modules::Module* module)
+            LinearVelocity(Modules::DataModules::Module* module) : Data(nbc)
             {
                 if (module->HasDataType(__LINEAR_VELOCITY__))
                     _module = module;
@@ -828,18 +873,14 @@ namespace Orion
                     _module = nullptr;
             }
 
-            double Get(uint8_t axis)
-            {
-                return ((_module) ? _module->GetData(__LINEAR_VELOCITY__ + axis) : .0f);
-            }
+            uint32_t GetType() { return __LINEAR_VELOCITY__; }
+            double Get(uint32_t selector) { return ((_module) ? _module->GetData(__LINEAR_VELOCITY__ + selector) : .0f); }
         };
 
-        class LinearDisplacement
+        class LinearDisplacement : virtual public Data
         {
-        private:
-            Modules::Module* _module;
         public:
-            LinearDisplacement(Modules::Module* module)
+            LinearDisplacement(Modules::DataModules::Module* module) : Data(nbc)
             {
                 if (module->HasDataType(__LINEAR_DISPLACEMENT__))
                     _module = module;
@@ -847,18 +888,14 @@ namespace Orion
                     _module = nullptr;
             }
 
-            double Get(uint8_t axis)
-            {
-                return ((_module) ? _module->GetData(__LINEAR_DISPLACEMENT__ + axis) : .0f);
-            }
+            uint32_t GetType() { return __LINEAR_DISPLACEMENT__; }
+            double GetData(uint32_t selector) { return ((_module) ? _module->GetData(__LINEAR_DISPLACEMENT__ + selector) : .0f); }
         };
 
-        class Magnetism
+        class Magnetism : virtual public Data
         {
-        private:
-            Modules::Module* _module;
         public:
-            Magnetism(Modules::Module* module)
+            Magnetism(Modules::DataModules::Module* module) : Data(nbc)
             {
                 if (module->HasDataType(__MAGNETISM_X__) && module->HasDataType(__MAGNETISM_Y__) && module->HasDataType(__MAGNETISM_Z__))
                     _module = module;
@@ -866,10 +903,8 @@ namespace Orion
                     _module = nullptr;
             }
 
-            double Get(uint8_t axis)
-            {
-                return ((_module) ? _module->GetData(__MAGNETISM_X__ + axis - 1) : .0f);
-            }
+            uint32_t GetType() { return __MAGNETISM__; }
+            double GetData(uint32_t selector) { return ((_module) ? _module->GetData(__MAGNETISM_X__ + selector - 1) : .0f); }
         };
     }
 }
