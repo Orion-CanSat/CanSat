@@ -138,210 +138,152 @@ namespace Orion
                 }    
         };
 
-        class Vector;
+        template<typename T>
         class Matrix;
+
+        template<typename T>
         class Vector
         {
         private:
-            int32_t *_vec;
+            T* _vec;
             uint32_t _size;
-
         public:
-            Vector(int32_t size)
+            friend Matrix<T>;
+            Vector(uint32_t size)
             {
-                _vec = (int32_t*)malloc(_size * sizeof(int32_t));
+                _vec = (T*)malloc(size * sizeof(T));
                 _size = size;
             }
+            ~Vector()
+            {
+                free(_vec);
+            }
 
-            int32_t& operator[](const uint32_t possition)
+            Vector(uint32_t size, T* vec)
+            {
+                _size = size;
+                _vec = vec;
+            }
+
+            T& operator[](const uint32_t possition)
             {
                 return _vec[possition];
             }
 
-            friend class Matrix;
-
-            inline Vector operator+(Vector& v)
+            Vector<T> operator+(Vector<T>& v)
             {
-                uint32_t n = this->_size;
-                Vector* res = new Vector(n);
-                for (uint32_t i = 0; i < n; i++) res->_vec[i] = this->_vec[i] + v._vec[i];
-                return *res;
+                uint32_t size = this->_size;
+                Vector<T>* result = new Vector<T>(size);
+                for (uint32_t i = 0; i < size; i++) result->_vec[i] = this->_vec[i] + v._vec[i];
+                return *result;
             }
 
-            inline Vector operator-()
+            Vector<T> operator-(Vector<T>& v)
             {
-                Vector v = Vector(_size);
-                uint32_t n = this->_size;
-                for (uint32_t i = 0; i < n; i++) v._vec[i] = - this->_vec[i];
-                return v;
+                uint32_t size = this->_size;
+                Vector<T>* result = new Vector<T>(size);
+                for (uint32_t i = 0; i < size; i++) result->_vec[i] = this->_vec[i] - v._vec[i];
+                return *result;
             }
 
-            inline Vector operator-(Vector& v)
+            Vector<T> operator-()
             {
-                //if (this->_size != v._size) assert(false);
-                uint32_t n = this->_size;
-                Vector* res = new Vector(n);
-                for (uint32_t i = 0; i < n; i++) res->_vec[i] = this->_vec[i] - v._vec[i];
-                return *res;
+                uint32_t size = this->_size;
+                Vector<T>* result = new Vector<T>(size);
+                for (uint32_t i = 0; i < size; i++) result._vec[i] = -this->_vec[i];
+                return *result;
             }
 
-            inline int32_t operator*(Vector &v)
+            T operator*(Vector& v)
             {
-                //if (this->_size != v._size) assert(false);
-                uint32_t n = this->_size;
-                int32_t res = 0;
-                for(uint32_t i = 0; i < n; i++) res += this->_vec[i] * v._vec[i];
-                return res;
+                uint32_t size = this->_size;
+                T res = this->_vec[0];
+                for (uint32_t i = 1; i < size; i++) res += this->_vec[i];
             }
 
-            inline Vector operator*(Matrix& m);
-
-            template<typename T> const inline Vector operator*(const T& a) const //a is a number
+            uint32_t GetSize()
             {
-                uint32_t n = this->_size;
-                Vector* res = new Vector(n);
-                for (uint32_t i = 0; i < n; i++) res->_vec[i] = this->_vec[i] * a;
-                return *res;
+                return _size;
             }
         };
 
+        template<typename T>
         class Matrix
         {
         private:
-            int32_t** _mat = nullptr;
+            T** _mat;
             uint32_t _rows, _columns;
-
         public:
             Matrix(uint32_t rows, uint32_t columns)
             {
                 _rows = rows; _columns = columns;
-                _mat = (int32_t**)malloc(_rows * sizeof(int32_t*));
-                for (int i = 0; i < _rows; i++)
-                    _mat[i] = (int32_t*)malloc(_columns * sizeof(int32_t));
+                _mat = (T**)malloc(_rows * sizeof(T*));
+                for (uint32_t i = 0; i < _rows; i++)
+                    _mat[i] = (T*)malloc(_columns * sizeof(T));
             }
-
-            class Proxy {
-            public:
-                Proxy(int32_t* _array) : _array(_array) { }
-
-                int32_t& operator[](const uint32_t index) {
-                    return _array[index];
-                }
-
-            private:
-                int32_t* _array;
-            };
-
-            Proxy operator[](const int32_t index) {
-                return Proxy(_mat[index]);
-            }
-
-            friend class Vector;
-
-            inline Matrix operator+(Matrix& m) //!DOESNT WORK
+            ~Matrix()
             {
-                uint32_t r = this->_rows, c = this->_columns;
-                Matrix* res = new Matrix(r, c);
-                for(uint32_t i = 0; i < r; i++){
-                    for(uint32_t j = 0; j < c; j++){
-                        res->_mat[i][j] = this->_mat[i][j] +  m._mat[i][j];
-                    }
-                }
-                return *res;
+                for (uint32_t i = 0; i < _rows; i++)
+                    free(_mat[i]);
+                free(_mat);
             }
 
-            inline Matrix operator-() //!DOESN'T WORK!!!
+            Vector<T> operator[](const uint32_t possition)
             {
-                uint32_t r = _rows, c = _columns;
-                Matrix res = Matrix(r, c);
-                for (uint32_t i = 0; i < r; i++){
-                    for(uint32_t j = 0; j < c; j++){
-                        res._mat[i][j] = - this->_mat[i][j];
-                    }
-                }
-                return res;
+                return Vector<T>(_columns, _mat[possition]);
             }
 
-            inline Matrix operator-(Matrix& m) //!DOESN"T WORK
-            {
-                uint32_t r = this->_rows, c = this->_columns;
-                Matrix* res = new Matrix(r, c);
-                for(uint32_t i = 0; i < r; i++){
-                    for(uint32_t j = 0; j < c; j++){
-                        res->_mat[i][j] = this->_mat[i][j] -  m._mat[i][j];
-                    }
-                }
-                return *res;
-            }
-
-            inline Matrix operator*(Matrix& m)
+            Matrix<T> operator*(Matrix<T>& m)
             {
                 uint32_t r = this->_rows, c = m._columns, n = this->_columns;
-                Matrix* res = new Matrix(r, c);
-                for(uint32_t i = 0; i < r; i++){
-                    for(uint32_t j = 0; j < c; j++){
-                        res->_mat[i][j] = 0;
-                        for(uint32_t k = 0; k < n; k++){
-                            res->_mat[i][j] += this->_mat[i][k] * m._mat[k][j];
+                Matrix<T>* result = new Matrix<T>(r, c);
+
+                for (uint32_t i = 0; i < r; i++)
+                {
+                    for (uint32_t j = 0; j < c; j++)
+                    {
+                        result->_mat[i][j] = 0;
+                        for (uint32_t k = 0; k < n; k++)
+                        {
+                            result->_mat[i][j] += this->_mat[i][k] * m._mat[k][j];
                         }
                     }
                 }
-                return *res;
+                return *result;
             }
 
-            inline Vector operator*(Vector& v){
+            Vector<T> operator*(Vector<T>& v)
+            {
                 uint32_t r = this->_rows, c = this->_columns;
-                if(c == v._size){
-                    Vector* ans = new Vector(r);
-                    for(uint32_t i = 0; i < r; i++){
+                if (c == v.GetSize())
+                {
+                    Vector<T>* ans = new Vector<T>(r);
+                    for (uint32_t i = 0; i < r; i++)
+                    {
                         ans->_vec[i] = 0;
-                        for(uint32_t k = 0; k < c; k++){
+                        for (uint32_t k = 0; k < c; k++)
+                        {
                             ans->_vec[i] += this->_mat[i][k] * v._vec[k];
                         }
                     }
                     return *ans;
                 }
-                else if(r == v._size){
-                    Vector* ans = new Vector(c);
-                    for(uint32_t i = 0; i < c; i++){
+                else if (r == v.GetSize())
+                {
+                    Vector<T>* ans = new Vector<T>(c);
+                    for (uint32_t i = 0; i < c; i++)
+                    {
                         ans->_vec[i] = 0;
-                        for(uint32_t k = 0; k < r; k++){
+                        for (uint32_t k = 0; k < r; k++)
+                        {
                             ans->_vec[i] += this->_mat[k][i] * v._vec[k];
                         }
                     }
                     return *ans;
                 }
-            }
 
-            template<typename T> const inline Matrix operator*(const T& a) const
-            {
-                uint32_t r = this->_rows, c = this->_columns;
-                Matrix* res = new Matrix(r, c);
-                for(uint32_t i = 0; i < r; i++){
-                    for(uint32_t j = 0; j < c; j++){
-                        res->_mat[i][j] = this->_mat[i][j] * a;
-                    }
-                }
-                return *res;
             }
         };
-
-        inline Vector Vector::operator*(Matrix& m)
-        {
-            return m * (*this);
-        }
-
-        template<typename T>
-        inline Vector operator*(const T lhs, const Vector& rhs)
-        {
-            return rhs * lhs;
-        }
-
-        template<typename T>
-        inline Matrix operator*(const T lhs, const Matrix& rhs)
-        {
-                return rhs * lhs;
-        }
     
         namespace Buffers
         {
@@ -527,7 +469,7 @@ namespace Orion
 
                     void NormalizeAcceleration()
                     {
-                        Utilities::Matrix MultiplicationMatrix1 = Utilities::Matrix(3, 3);
+                        /*Utilities::Matrix<double> MultiplicationMatrix1 = Utilities::Matrix(3, 3);
                         Utilities::Matrix MultiplicationMatrix2 = Utilities::Matrix(3, 3);
                         Utilities::Matrix MultiplicationMatrix3 = Utilities::Matrix(3, 3);
                         Utilities::Vector Acceleration = Utilities::Vector(3);
@@ -565,7 +507,7 @@ namespace Orion
 
                         _normalizedAccelerationX = Acceleration[0];
                         _normalizedAccelerationY = Acceleration[1];
-                        _normalizedAccelerationZ = Acceleration[2];
+                        _normalizedAccelerationZ = Acceleration[2];*/
                     }
 
                 public:
