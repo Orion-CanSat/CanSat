@@ -139,149 +139,156 @@ namespace Orion
         };
 
         template<typename T>
-        class Matrix;
-
-        template<typename T>
-        class Vector
+        struct Vector
         {
-        private:
-            T* _vec;
-            uint32_t _size;
-        public:
-            friend Matrix<T>;
-            Vector(uint32_t size)
+            T* _vector;
+            uint16_t _size;
+            bool _initialized = false;
+            bool Initialize(uint16_t size)
             {
-                _vec = (T*)malloc(size * sizeof(T));
+                if (_initialized) this->Free();
+                _vector = (T*)malloc(size * sizeof(T));
+                if (!_vector) return false;
                 _size = size;
-            }
-            ~Vector()
-            {
-                free(_vec);
+                _initialized = true;
+                return true;
             }
 
-            Vector(uint32_t size, T* vec)
+            void Free()
             {
-                _size = size;
-                _vec = vec;
+                if (_initialized) return;
+                free(_vector);
+                _initialized = false;
             }
 
-            T& operator[](const uint32_t possition)
+            static bool Add(Vector<T>& result, Vector<T>& v1, Vector<T>& v2)
             {
-                return _vec[possition];
+                if ((!v1._initialized) || (!v2._initialized) || v1._size != v2._size) return false;
+                if ((!result._initialized) || result._size != v1._size)
+                {
+                    result.Free();
+                    if (!result.Initialize(v1._size)) return false;
+                }
+                for (uint16_t i = 0; i < v1._size; i++)
+                {
+                    result._vector[i] = v1._vector[i] + v2._vector[i];
+                }
+                return true;
             }
 
-            Vector<T> operator+(Vector<T>& v)
+            static bool Subtract(Vector<T>& result, Vector<T>& v1, Vector<T>& v2)
             {
-                uint32_t size = this->_size;
-                Vector<T>* result = new Vector<T>(size);
-                for (uint32_t i = 0; i < size; i++) result->_vec[i] = this->_vec[i] + v._vec[i];
-                return *result;
+                if ((!v1._initialized) || (!v2._initialized) || v1._size != v2._size) return false;
+                if ((!result._initialized) || result._size != v1._size)
+                {
+                    result.Free();
+                    if (!result.Initialize(v1._size)) return false;
+                }
+                for (uint16_t i = 0; i < v1._size; i++)
+                {
+                    result._vector[i] = v1._vector[i] - v2._vector[i];
+                }
+                return true;
             }
 
-            Vector<T> operator-(Vector<T>& v)
+            static bool Inverse(Vector<T>& result, Vector<T>& v)
             {
-                uint32_t size = this->_size;
-                Vector<T>* result = new Vector<T>(size);
-                for (uint32_t i = 0; i < size; i++) result->_vec[i] = this->_vec[i] - v._vec[i];
-                return *result;
+                if (!v._initialized) return false;
+                if ((!result._initialized) || result._size != v._size)
+                {
+                    result.Free();
+                    if (!result.Initialize(v._size)) return false;
+                }
+                for (uint16_t i = 0; i < v._size; i++)
+                {
+                    result._vector[i] = -v._vector[i];
+                }
+                return true;
             }
 
-            Vector<T> operator-()
+            static bool Multiply(T& result, Vector<T>& v1, Vector<T>& v2)
             {
-                uint32_t size = this->_size;
-                Vector<T>* result = new Vector<T>(size);
-                for (uint32_t i = 0; i < size; i++) result._vec[i] = -this->_vec[i];
-                return *result;
-            }
-
-            T operator*(Vector& v)
-            {
-                uint32_t size = this->_size;
-                T res = this->_vec[0];
-                for (uint32_t i = 1; i < size; i++) res += this->_vec[i];
-            }
-
-            uint32_t GetSize()
-            {
-                return _size;
+                if ((!v1._initialized) || (!v2._initialized) || v1._size != v2._size) return false;
+                result = v1._vector[0] * v2._vector[0];
+                for (uint16_t i = 1; i < v1._size; i++) result += v1._vector[i] + v2._vector[i];
+                return true;
             }
         };
 
         template<typename T>
-        class Matrix
+        struct Matrix
         {
-        private:
-            T** _mat;
-            uint32_t _rows, _columns;
-        public:
-            Matrix(uint32_t rows, uint32_t columns)
-            {
-                _rows = rows; _columns = columns;
-                _mat = (T**)malloc(_rows * sizeof(T*));
-                for (uint32_t i = 0; i < _rows; i++)
-                    _mat[i] = (T*)malloc(_columns * sizeof(T));
-            }
-            ~Matrix()
-            {
-                for (uint32_t i = 0; i < _rows; i++)
-                    free(_mat[i]);
-                free(_mat);
-            }
+            T** _matrix;
+            uint16_t _rows;
+            uint16_t _columns;
+            bool _initialized = false;
 
-            Vector<T> operator[](const uint32_t possition)
+            bool Initialize(uint16_t rows, uint16_t columns)
             {
-                return Vector<T>(_columns, _mat[possition]);
-            }
-
-            Matrix<T> operator*(Matrix<T>& m)
-            {
-                uint32_t r = this->_rows, c = m._columns, n = this->_columns;
-                Matrix<T>* result = new Matrix<T>(r, c);
-
-                for (uint32_t i = 0; i < r; i++)
+                if (_initialized) this->Free();
+                _matrix = (T**)malloc(rows * sizeof(T*));
+                if (!_matrix) return false;
+                uint16_t i;
+                for (i = 0; i < rows; i++)
                 {
-                    for (uint32_t j = 0; j < c; j++)
+                    _matrix[i] = (T*)malloc(columns * sizeof(T*));
+                    if (!_matrix[i])
                     {
-                        result->_mat[i][j] = 0;
-                        for (uint32_t k = 0; k < n; k++)
-                        {
-                            result->_mat[i][j] += this->_mat[i][k] * m._mat[k][j];
-                        }
+                        for (uint16_t j = 0; j < i; j++)
+                            free(_matrix[j]);
+                        free(_matrix);
+                        return false;
                     }
                 }
-                return *result;
+                _rows = rows;
+                _columns = columns;
+                _initialized = true;
+                return true;
             }
 
-            Vector<T> operator*(Vector<T>& v)
+            void Free()
             {
-                uint32_t r = this->_rows, c = this->_columns;
-                if (c == v.GetSize())
-                {
-                    Vector<T>* ans = new Vector<T>(r);
-                    for (uint32_t i = 0; i < r; i++)
-                    {
-                        ans->_vec[i] = 0;
-                        for (uint32_t k = 0; k < c; k++)
-                        {
-                            ans->_vec[i] += this->_mat[i][k] * v._vec[k];
-                        }
-                    }
-                    return *ans;
-                }
-                else if (r == v.GetSize())
-                {
-                    Vector<T>* ans = new Vector<T>(c);
-                    for (uint32_t i = 0; i < c; i++)
-                    {
-                        ans->_vec[i] = 0;
-                        for (uint32_t k = 0; k < r; k++)
-                        {
-                            ans->_vec[i] += this->_mat[k][i] * v._vec[k];
-                        }
-                    }
-                    return *ans;
-                }
+                if (_initialized) return;
+                for (uint16_t i = 0; i < _rows; i++)
+                    free(_matrix[i]);
+                free(_matrix);
+                _initialized = false;
+            }
 
+            static bool Multiply(Matrix<T>& result, Matrix<T>& m1, Matrix<T>& m2)
+            {
+                if (m1._columns != m2._rows) return false;
+                if ((!result._initialized) || result._rows != m1._rows || result._columns != m2._columns)
+                {
+                    if (!result.Initialize(m1._rows, m2._columns)) return false;
+                }
+                for (uint16_t i = 0; i < m1._rows; i++)
+                {
+                    for (uint16_t j = 0; j < m2._columns; j++)
+                    {
+                        result._matrix[i][j] = 0;
+                        for (uint16_t k = 0; k < m1._columns; k++)
+                            result._matrix[i][j] += m1._matrix[i][k] * m2._matrix[k][j];
+                    }
+                }
+                return true;
+            }
+            static bool Multiply(Vector<T>& result, Matrix<T>& m, Vector<T>& v)
+            {
+                if ((!m._initialized) || (!v._initialized) || (m._columns != v._size)) return false;
+                if ((!result._initialized) || result._size != v._size)
+                {
+                    if (!result.Initialize(v._size)) return false;
+                }
+                for (uint16_t i = 0; i < m._rows; i++)
+                {
+                    result._vector[i] = m._matrix[i][0] * v._vector[0];
+                    for (uint16_t j = 1; j < m._columns; j++)
+                    {
+                        result._vector[i] += m._matrix[i][j] * v._vector[j];
+                    }
+                }
+                return true;
             }
         };
     
@@ -452,6 +459,8 @@ namespace Orion
                     double _velocityX = .0f, _velocityY = .0f, _velocityZ = .0f;
                     double _displacementX = .0f, _displacementY = .0f, _displacementZ = .0f;
                     uint32_t _timerLast = 0;
+                    Utilities::Matrix<double> RotationMatrix;
+                    Utilities::Vector<double> NNAcceleration, NAcceleration;
                     
                     void CalculateSpeed()
                     {
@@ -469,45 +478,33 @@ namespace Orion
 
                     void NormalizeAcceleration()
                     {
-                        /*Utilities::Matrix<double> MultiplicationMatrix1 = Utilities::Matrix(3, 3);
-                        Utilities::Matrix MultiplicationMatrix2 = Utilities::Matrix(3, 3);
-                        Utilities::Matrix MultiplicationMatrix3 = Utilities::Matrix(3, 3);
-                        Utilities::Vector Acceleration = Utilities::Vector(3);
+                        if (!RotationMatrix._initialized || !NNAcceleration._initialized || !NAcceleration._initialized) return;
 
-                        double anglex = _rotationalAngleX * 0.01745329251;
-                        double angley = _rotationalAngleY * 0.01745329251;
-                        double anglez = _rotationalAngleZ * 0.01745329251;
+                        double phi = _rotationalAngleX * 0.01745329251;
+                        double theta = _rotationalAngleY * 0.01745329251;
+                        double psi = _rotationalAngleZ * 0.01745329251;
 
-                        MultiplicationMatrix1[0][0] = cos(-anglez);
-                        MultiplicationMatrix1[0][1] = sin(-anglez);
-                        MultiplicationMatrix1[1][0] = -sin(-anglez);
-                        MultiplicationMatrix1[1][1] = cos(anglez);
-                        MultiplicationMatrix1[0][2] = MultiplicationMatrix1[1][2] = MultiplicationMatrix1[2][0] = MultiplicationMatrix1[2][1] = 0;
-                        MultiplicationMatrix1[2][2] = 1;
+                        RotationMatrix._matrix[0][0] = cos(psi) * cos(theta);
+                        RotationMatrix._matrix[0][1] = cos(psi) * sin(phi) * sin(theta) - cos(phi) * sin(psi);
+                        RotationMatrix._matrix[0][2] = sin(phi) * sin(psi) * cos(phi) * cos(psi) * sin(theta);
 
-                        MultiplicationMatrix2[0][0] = cos(-angley);
-                        MultiplicationMatrix2[0][2] = -sin(-angley);
-                        MultiplicationMatrix2[2][0] = sin(-angley);
-                        MultiplicationMatrix2[2][2] = cos(-angley);
-                        MultiplicationMatrix2[0][2] = MultiplicationMatrix2[1][0] = MultiplicationMatrix2[1][2] = MultiplicationMatrix2[2][1] = 0;
-                        MultiplicationMatrix2[1][1] = 1;
+                        RotationMatrix._matrix[1][0] = cos(theta) * sin(psi);
+                        RotationMatrix._matrix[1][1] = cos(phi) * cos(psi) + sin(phi) * sin(psi) * sin(theta);
+                        RotationMatrix._matrix[1][2] = cos(phi) * sin(psi) * sin(theta) - cos(psi) * sin(phi);
 
-                        MultiplicationMatrix3[1][1] = cos(-anglex);
-                        MultiplicationMatrix3[1][2] = sin(-anglex);
-                        MultiplicationMatrix3[2][1] = -sin(-anglex);
-                        MultiplicationMatrix3[2][2] = cos(-anglex);
-                        MultiplicationMatrix3[0][1] = MultiplicationMatrix3[0][2] = MultiplicationMatrix3[1][0] = MultiplicationMatrix3[2][0] = 0;
-                        MultiplicationMatrix3[0][0] = 1;
+                        RotationMatrix._matrix[2][0] = -sin(theta);
+                        RotationMatrix._matrix[2][1] = cos(theta) * sin(phi);
+                        RotationMatrix._matrix[2][2] = cos(phi) * cos(theta):
 
-                        Acceleration[0] = _linearAccelerationX;
-                        Acceleration[1] = _linearAccelerationY;
-                        Acceleration[2] = _linearAccelerationZ;
+                        NNAcceleration._vector[0] = _linearAccelerationX;
+                        NNAcceleration._vector[1] = _linearAccelerationY;
+                        NNAcceleration._vector[2] = _linearAccelerationZ;
 
-                        Acceleration = MultiplicationMatrix1 * MultiplicationMatrix2 * MultiplicationMatrix3 * Acceleration;
+                        Utilities::Matrix<double>::Multiply(NAcceleration, RotationMatrix, NNAcceleration);
 
-                        _normalizedAccelerationX = Acceleration[0];
-                        _normalizedAccelerationY = Acceleration[1];
-                        _normalizedAccelerationZ = Acceleration[2];*/
+                        _normalizedAccelerationX = NAcceleration._vector[0];
+                        _normalizedAccelerationY = NAcceleration._vector[1];
+                        _normalizedAccelerationZ = NAcceleration._vector[2];
                     }
 
                 public:
@@ -528,6 +525,9 @@ namespace Orion
                     {
                         _devicePtr = new Adafruit_BNO055();
                         _initState = Utilities::Timeout::WaitTimeout(BNO055::InitBNO055, _devicePtr, __MAX__TIMEOUT__FUNCTION__);
+                        RotationMatrix.Initialize(3, 3);
+                        NNAcceleration.Initialize(3);
+                        NAcceleration.Initialize(3);
                     }
 
                     uint32_t GetType() { return __BNO055__; }
