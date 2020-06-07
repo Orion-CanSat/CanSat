@@ -21,6 +21,25 @@
  */
 
 
+#if defined(__arm__) && defined(CORE_TEENSY)
+    #define __TEENSY__
+    #if defined(__MKL26Z64__)
+        #define __TEENSY_LC__
+    #elif defined(__MK20DX128__)
+        #define __TEENSY_3_0__
+    #elif defined(__MK20DX256__)
+        #define __TEENSY_3_1__
+        #define __TEENSY_3_2__
+    #elif defined(__MK64FX512__)
+        #define __TEENSY_3_5__
+    #elif defined(__MK66FX1M0__)
+        #define __TEENSY_3_6__
+    #elif defined(__IMXRT1062__)
+        #define __TEENSY_4_0__
+    #endif
+#endif
+
+
 #define __BME280__ 0x0001
 #define __BNO055__ 0x0002
 #define __SD__ 0x0101
@@ -37,8 +56,9 @@
 #include <SD.h>
 #endif
 
-#include <TeensyThreads.h>
-
+#if defined(TEENSY)
+    #include <TeensyThreads.h>
+#endif
 
 #define __MAX__TIMEOUT__FUNCTION__ 10000
 
@@ -374,6 +394,7 @@ namespace Orion
                     {
                         return (((Adafruit_BME280*)bme) ? ((Adafruit_BME280*)bme)->begin() : false);
                     }
+                    #if defined(TEENSY)
                     static void AsyncUpdate(BME280* Bme)
                     {
                         while (true)
@@ -382,6 +403,7 @@ namespace Orion
                             delay(Bme->_updateInterval);
                         }
                     }
+                    #endif
 
                     BME280() : Module(nbc)
                     {
@@ -438,11 +460,13 @@ namespace Orion
                         }
                         _timeOfLastUpdate = millis();
                     }
+                    #if defined(TEENSY)
                     void AutoUpdateInterval(uint32_t interval)
                     {
                         _updateInterval = interval;
                         threads.addThread(BME280::AsyncUpdate, this);
                     }
+                    #endif
                 };
             #endif
 
@@ -494,7 +518,7 @@ namespace Orion
 
                         RotationMatrix._matrix[2][0] = -sin(theta);
                         RotationMatrix._matrix[2][1] = cos(theta) * sin(phi);
-                        RotationMatrix._matrix[2][2] = cos(phi) * cos(theta):
+                        RotationMatrix._matrix[2][2] = cos(phi) * cos(theta);
 
                         NNAcceleration._vector[0] = _linearAccelerationX;
                         NNAcceleration._vector[1] = _linearAccelerationY;
@@ -512,6 +536,7 @@ namespace Orion
                     {
                         return (((Adafruit_BNO055*)bno) ? ((Adafruit_BNO055*)bno)->begin() : false);
                     }
+                    #if defined(TEENSY)
                     static void AsyncUpdate(BNO055* Bno)
                     {
                         while (true)
@@ -520,6 +545,7 @@ namespace Orion
                             delay(Bno->_updateInterval);
                         }
                     }
+                    #endif
 
                     BNO055() : Module(nbc)
                     {
@@ -646,11 +672,13 @@ namespace Orion
                         NormalizeAcceleration();
                         CalculateSpeed();
                     }
+                    #if defined(TEENSY)
                     void AutoUpdateInterval(uint32_t interval)
                     {
                         _updateInterval = interval;
                         threads.addThread(BNO055::AsyncUpdate, this);
                     }
+                    #endif
                 };
             #endif
         }
@@ -852,11 +880,91 @@ namespace Orion
 }
 
 
+Orion::Modules::DataModules::Module* bme;
+Orion::Modules::DataModules::Module* bno;
+
+Orion::Data::Data* pressure;
+Orion::Data::Data* temperature;
+Orion::Data::Data* humidity;
+Orion::Data::Data* altitude;
+Orion::Data::Data* gravitationalAcceleration;
+Orion::Data::Data* magnetism;
+Orion::Data::Data* rotationalAngles;
+Orion::Data::Data* angularVelocity;
+Orion::Data::Data* linearAcceleration;
+Orion::Data::Data* linearVelocity;
+Orion::Data::Data* linearDisplacement;
+
+
+char* radioPacket = (char*)malloc(252 * sizeof(char));
+char* sdPacket = (char*)malloc(1024 * sizeof(char));
+
+File fptr;
+
 void setup()
 {
+    bme = new Orion::Modules::DataModules::BME280();
+    bno = new Orion::Modules::DataModules::BNO055();
 
+    bme->AutoUpdateInterval(50);
+    bno->AutoUpdateInterval(10);
+
+    pressure = new Orion::Data::Pressure(bme);
+    temperature = new Orion::Data::Temperature(bme);
+    humidity = new Orion::Data::Humidity(bme);
+    altitude = new Orion::Data::Altitude(bme);
+    gravitationalAcceleration = new Orion::Data::GravitationalAcceleration(bno);
+    magnetism = new Orion::Data::Magnetism(bno);
+    rotationalAngles = new Orion::Data::RotationalAngle(bno);
+    angularVelocity = new Orion::Data::AngularVelocity(bno);
+    linearAcceleration = new Orion::Data::LinearAcceleration(bno);
+    linearVelocity = new Orion::Data::LinearVelocity(bno);
+    linearDisplacement = new Orion::Data::LinearDisplacement(bno);
+
+    SD.begin(BUILTIN_SDCARD);
 }
 
 void loop()
 {
+    float data[26];
+    data[0] = (float)millis();
+    data[1] = (float)pressure->GetData(0);
+    data[2] = (float)temperature->GetData(0);
+    data[3] = (float)humidity->GetData(0);
+    data[4] = (float)altitude->GetData(0);
+    data[5] = (float)gravitationalAcceleration->GetData(__X_AXIS__);
+    data[6] = (float)gravitationalAcceleration->GetData(__Y_AXIS__);
+    data[7] = (float)gravitationalAcceleration->GetData(__Z_AXIS__);
+    data[8] = (float)magnetism->GetData(__X_AXIS__);
+    data[9] = (float)magnetism->GetData(__Y_AXIS__);
+    data[10] = (float)magnetism->GetData(__Z_AXIS__);
+    data[11] = (float)rotationalAngles->GetData(__X_AXIS__);
+    data[12] = (float)rotationalAngles->GetData(__Y_AXIS__);
+    data[13] = (float)rotationalAngles->GetData(__Z_AXIS__);
+    data[14] = (float)angularVelocity->GetData(__X_AXIS__);
+    data[15] = (float)angularVelocity->GetData(__Y_AXIS__);
+    data[16] = (float)angularVelocity->GetData(__Z_AXIS__);
+    data[17] = (float)linearAcceleration->GetData(__X_AXIS__);
+    data[18] = (float)linearAcceleration->GetData(__Y_AXIS__);
+    data[19] = (float)linearAcceleration->GetData(__Z_AXIS__);
+    data[20] = (float)linearVelocity->GetData(__X_AXIS__);
+    data[21] = (float)linearVelocity->GetData(__Y_AXIS__);
+    data[22] = (float)linearVelocity->GetData(__Z_AXIS__);
+    data[23] = (float)linearDisplacement->GetData(__X_AXIS__);
+    data[24] = (float)linearDisplacement->GetData(__Y_AXIS__);
+    data[25] = (float)linearDisplacement->GetData(__Z_AXIS__);
+
+    fptr = SD.open("Data.dat");
+    for (int i = 0; i < sizeof(data); i++)
+        radioPacket[i] = ((char*)&data)[i];
+    radioPacket[sizeof(data)] = '\0';
+
+    snprintf(sdPacket,
+        1024,
+        "%f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f\n",
+        data[0], data[1], data[2], data[3], data[4], data[5], data[6], data[7], data[8], data[9], data[10], data[11], data[12],
+        data[13], data[14], data[15], data[16], data[17], data[18], data[19], data[20], data[21], data[22], data[23], data[24]);
+
+    fptr.write(sdPacket, strlen(sdPacket));
+    fptr.close();
 }
