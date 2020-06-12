@@ -21,9 +21,18 @@
  */
 
 
+#ifndef NAN
+#pargma warning Your compiler/platform does not support the use of NAN
+#define NAN {0}
+#endif
+
 #if defined(__arm__) && defined(CORE_TEENSY)
     #define __TEENSY__
-    #if defined(__MKL26Z64__)
+    #if defined(__AT90USB162__)
+        #define __TEENSY_1_0__
+    #elif defined(__ATMEGA32U4__)
+        #define __TEENSY_2_0__
+    #elif defined(__MKL26Z64__)
         #define __TEENSY_LC__
     #elif defined(__MK20DX128__)
         #define __TEENSY_3_0__
@@ -35,14 +44,19 @@
     #elif defined(__MK66FX1M0__)
         #define __TEENSY_3_6__
     #elif defined(__IMXRT1062__)
-        #define __TEENSY_4_0__
+        #if defined(BUILTIN_SDCARD)
+            #define __TEENSY_4_1__
+        #else
+            #define __TEENSY_4_0__
+        #endif
     #endif
 #endif
 
 
-#define __BME280__ 0x0001
-#define __BNO055__ 0x0002
-#define __SD__ 0x0101
+#define __BME280__ 0x000001
+#define __BNO055__ 0x000002
+#define __SD__ 0x000101
+#define __MTK3339__ 0x010001
 
 #if defined(__BME280__)
     #include <Adafruit_BME280.h>
@@ -56,57 +70,68 @@
 #include <SD.h>
 #endif
 
+#if defined(__MTK3339__)
+    #include <Adafruit_GPS.h>
+#endif
+
 #if defined(TEENSY)
     #include <TeensyThreads.h>
 #endif
 
+#include <SoftwareSerial.h>
+
 #define __MAX__TIMEOUT__FUNCTION__ 10000
 
 
-#define __TEMPERATURE__ 0x0001
-#define __HUMIDITY__ 0x0002
-#define __PRESSURE__ 0x0003
-#define __ALTITUDE__ 0x0004
+#define __TEMPERATURE__ 0x000001
+#define __HUMIDITY__ 0x000002
+#define __PRESSURE__ 0x000003
+#define __ALTITUDE__ 0x000004
 
-#define __ROTATIONAL_ANGLE__ 0x0005
-#define __ROTATIONAL_ANGLE_X__ 0x0006
-#define __ROTATIONAL_ANGLE_Y__ 0x0007
-#define __ROTATIONAL_ANGLE_Z__ 0x0008
+#define __ROTATIONAL_ANGLE__ 0x000005
+#define __ROTATIONAL_ANGLE_X__ 0x000006
+#define __ROTATIONAL_ANGLE_Y__ 0x000007
+#define __ROTATIONAL_ANGLE_Z__ 0x000008
 
-#define __ANGULAR_VELOCITY__ 0x0009
-#define __ANGULAR_VELOCITY_X__ 0x000A
-#define __ANGULAR_VELOCITY_Y__ 0x000B
-#define __ANGULAR_VELOCITY_Z__ 0x000C
+#define __ANGULAR_VELOCITY__ 0x000009
+#define __ANGULAR_VELOCITY_X__ 0x00000A
+#define __ANGULAR_VELOCITY_Y__ 0x00000B
+#define __ANGULAR_VELOCITY_Z__ 0x00000C
 
-#define __GRAVITATIONAL_ACCELERATION__ 0x000D
-#define __GRAVITATIONAL_ACCELERATION_X__ 0x000E
-#define __GRAVITATIONAL_ACCELERATION_Y__ 0x000F
-#define __GRAVITATIONAL_ACCELERATION_Z__ 0x0010
+#define __GRAVITATIONAL_ACCELERATION__ 0x00000D
+#define __GRAVITATIONAL_ACCELERATION_X__ 0x00000E
+#define __GRAVITATIONAL_ACCELERATION_Y__ 0x00000F
+#define __GRAVITATIONAL_ACCELERATION_Z__ 0x000010
 
-#define __LINEAR_ACCELERATION__ 0x0011
-#define __LINEAR_ACCELERATION_X__ 0x0012
-#define __LINEAR_ACCELERATION_Y__ 0x0013
-#define __LINEAR_ACCELERATION_Z__ 0x0014
+#define __LINEAR_ACCELERATION__ 0x000011
+#define __LINEAR_ACCELERATION_X__ 0x000012
+#define __LINEAR_ACCELERATION_Y__ 0x000013
+#define __LINEAR_ACCELERATION_Z__ 0x000014
 
-#define __LINEAR_VELOCITY__ 0x0015
-#define __LINEAR_VELOCITY_X__ 0x0016
-#define __LINEAR_VELOCITY_Y__ 0x0017
-#define __LINEAR_VELOCITY_Z__ 0x0018
+#define __LINEAR_VELOCITY__ 0x000015
+#define __LINEAR_VELOCITY_X__ 0x000016
+#define __LINEAR_VELOCITY_Y__ 0x000017
+#define __LINEAR_VELOCITY_Z__ 0x000018
 
-#define __LINEAR_DISPLACEMENT__ 0x0019
-#define __LINEAR_DISPLACEMENT_X__ 0x001A
-#define __LINEAR_DISPLACEMENT_Y__ 0x001B
-#define __LINEAR_DISPLACEMENT_Z__ 0x001C
+#define __LINEAR_DISPLACEMENT__ 0x00000019
+#define __LINEAR_DISPLACEMENT_X__ 0x00001A
+#define __LINEAR_DISPLACEMENT_Y__ 0x00001B
+#define __LINEAR_DISPLACEMENT_Z__ 0x00001C
 
-#define __MAGNETISM__ 0x001D
-#define __MAGNETISM_X__ 0x001E
-#define __MAGNETISM_Y__ 0x001F
-#define __MAGNETISM_Z__ 0x0020
+#define __MAGNETISM__ 0x00001D
+#define __MAGNETISM_X__ 0x00001E
+#define __MAGNETISM_Y__ 0x00001F
+#define __MAGNETISM_Z__ 0x000020
+
+#define __GPS__ 0x000021
+#define __LATITUDE__ 0x000022
+#define __LONGITUDE__ 0x000023
 
 
-#define __X_AXIS__ 0x01
-#define __Y_AXIS__ 0x02
-#define __Z_AXIS__ 0x03
+#define __AXIS__ 0x10000
+#define __X_AXIS__ 0x10001
+#define __Y_AXIS__ 0x10002
+#define __Z_AXIS__ 0x10003
 
 
 namespace Orion
@@ -363,10 +388,9 @@ namespace Orion
             {
             protected:
                 void* _devicePtr = nullptr;
-                bool _initState = false;
                 uint32_t _timeOfLastUpdate = 0;
-                uint32_t _updateInterval;
             public:
+                bool _initState = false;
                 Module() { }
                 Module(noBaseClass) { }
 
@@ -389,6 +413,7 @@ namespace Orion
                 {
                 private:
                     double _temperature = .0f, _humidity = .0f, _pressure = .0f, _altitude = .0f;
+                    uint32_t _updateInterval;
                 public:
                     static bool InitBME280(void* bme)
                     {
@@ -485,6 +510,7 @@ namespace Orion
                     uint32_t _timerLast = 0;
                     Utilities::Matrix<double> RotationMatrix;
                     Utilities::Vector<double> NNAcceleration, NAcceleration;
+                    uint32_t _updateInterval;
                     
                     void CalculateSpeed()
                     {
@@ -629,6 +655,7 @@ namespace Orion
                         _timerLast = _timeOfLastUpdate;
                         if (_initState)
                         {
+                            Serial.println("Got Here1");
                             imu::Vector<3> euler = ((Adafruit_BNO055*)_devicePtr)->getVector(Adafruit_BNO055::VECTOR_EULER);
                             imu::Vector<3> gyro = ((Adafruit_BNO055*)_devicePtr)->getVector(Adafruit_BNO055::VECTOR_GYROSCOPE);
                             imu::Vector<3> grav = ((Adafruit_BNO055*)_devicePtr)->getVector(Adafruit_BNO055::VECTOR_GRAVITY);
@@ -649,6 +676,7 @@ namespace Orion
                             _magnetismX = magn.x();
                             _magnetismY = magn.y();
                             _magnetismZ = magn.z();
+                            Serial.println("Got Here2");
                         }
                         else
                         {
@@ -669,8 +697,11 @@ namespace Orion
                             _magnetismZ = .0f;
                         }
                         _timeOfLastUpdate = millis();
+                        Serial.println("Got Here3");
                         NormalizeAcceleration();
+                        Serial.println("Got Here4");
                         CalculateSpeed();
+                        Serial.println("Got Here5");
                     }
                     #if defined(TEENSY)
                     void AutoUpdateInterval(uint32_t interval)
@@ -682,7 +713,107 @@ namespace Orion
                 };
             #endif
         }
-    
+        
+        namespace GPSModules
+        {
+            typedef struct 
+            {
+                double _latitude = .0f;
+                double _longitude = .0f;
+                double _height = .0f;
+            } Coordinates;
+            
+            class GPS : virtual public DataModules::Module
+            {
+            protected:
+                Coordinates _coordinates;
+            public:
+                static double GetDistance(Coordinates& a, Coordinates& b)
+                {
+                    const unsigned int R = 6371e3;
+                    const double phi1 = a._latitude * 0.01745329251;
+                    const double phi2 = b._latitude * 0.01745329251;
+                    const double deltaPhi = (b._latitude - a._latitude) * 0.01745329251;
+                    const double deltaLambda = (b._longitude - a._longitude) * 0.01745329251;
+
+                    const double alpha = pow(sin(deltaPhi / 2), 2.0) + cos(phi1) * cos(phi2) * pow(sin(deltaLambda / 2), 2.0);
+                    const double c = 2 * atan2(sqrt(alpha), sqrt(1 - alpha));
+
+                    return R * c;
+                }
+
+                GPS() { }
+                GPS(noBaseClass) { }
+
+                uint32_t GetType() { return __GPS__; }
+                bool HasDataType(uint32_t type)
+                {
+                    switch (type)
+                    {
+                    case __ALTITUDE__:
+                    case __LONGITUDE__:
+                    case __LATITUDE__:
+                    case __LINEAR_DISPLACEMENT__:
+                        return true;
+                    default:
+                        return false;
+                    }
+                }
+                double GetData(uint32_t type)
+                {
+                    switch (type)
+                    {
+                    case __LONGITUDE__:
+                        return _coordinates._longitude;
+                    case __LATITUDE__:
+                        return _coordinates._latitude;
+                    case __ALTITUDE__:
+                        return _coordinates._height;
+                    default:
+                        return .0f;
+                    }
+                }
+        
+                virtual void Update() { }
+                virtual void AutoUpdateInterval(uint32_t interval) { }
+
+                virtual bool Transmit(uint32_t* message, uint32_t size) { return false; }
+                virtual uint32_t* Receive(int32_t timout = -1) { return nullptr; }
+
+                virtual ~GPS() { }
+            };
+
+            #if defined(__MTK3339__)
+            class MTK3339 : virtual public GPS
+            {
+            public:
+                MTK3339(HardwareSerial* serial) : GPS(nbc)
+                {
+                    _devicePtr = new Adafruit_GPS(serial);
+                    ((Adafruit_GPS*)_devicePtr)->begin(9600);
+                    ((Adafruit_GPS*)_devicePtr)->sendCommand(PMTK_SET_NMEA_OUTPUT_RMCGGA);
+                    ((Adafruit_GPS*)_devicePtr)->sendCommand(PMTK_SET_NMEA_UPDATE_1HZ);
+                    ((Adafruit_GPS*)_devicePtr)->sendCommand(PGCMD_ANTENNA);
+                    delay(300);
+                    serial->println(PMTK_Q_RELEASE);
+                    _initState = true;
+                }
+
+                void Update()
+                {
+                    if (!_initState) return;
+                    if (((Adafruit_GPS*)_devicePtr)->newNMEAreceived() && !((Adafruit_GPS*)_devicePtr)->parse(((Adafruit_GPS*)_devicePtr)->lastNMEA())) return;
+                    if (((Adafruit_GPS*)_devicePtr)->fix)
+                    {
+                        _coordinates._latitude = ((Adafruit_GPS*)_devicePtr)->latitude;
+                        _coordinates._longitude = ((Adafruit_GPS*)_devicePtr)->longitude;
+                        _coordinates._height = ((Adafruit_GPS*)_devicePtr)->altitude;
+                    }
+                }
+            };
+            #endif
+        }
+
         namespace IOModules
         {
             class SD : virtual public Utilities::Buffers::Buffer
@@ -784,7 +915,7 @@ namespace Orion
             }
 
             uint32_t GetType() { return __ROTATIONAL_ANGLE__; }
-            double GetData(uint32_t selector) { return ((_module) ? _module->GetData(__ROTATIONAL_ANGLE__ + selector) : .0f); }
+            double GetData(uint32_t selector) { return ((_module) ? _module->GetData(__ROTATIONAL_ANGLE__ + selector - __AXIS__) : .0f); }
         };
 
         class AngularVelocity : virtual public Data
@@ -799,7 +930,7 @@ namespace Orion
             }
 
             uint32_t GetType() { return __ANGULAR_VELOCITY__; }
-            double GetData(uint32_t selector) { return ((_module) ? _module->GetData(__ANGULAR_VELOCITY__ + selector) : .0f); }
+            double GetData(uint32_t selector) { return ((_module) ? _module->GetData(__ANGULAR_VELOCITY__ + selector - __AXIS__) : .0f); }
         };
 
         class GravitationalAcceleration : virtual public Data
@@ -814,7 +945,7 @@ namespace Orion
             }
 
             uint32_t GetType() { return __GRAVITATIONAL_ACCELERATION__; }
-            double GetData(uint32_t selector) { return ((_module) ? _module->GetData(__GRAVITATIONAL_ACCELERATION__ + selector) : .0f); }
+            double GetData(uint32_t selector) { return ((_module) ? _module->GetData(__GRAVITATIONAL_ACCELERATION__ + selector - __AXIS__) : .0f); }
         };
 
         class LinearAcceleration : virtual public Data
@@ -829,7 +960,7 @@ namespace Orion
             }
 
             uint32_t GetType() { return __LINEAR_ACCELERATION__; }
-            double GetData(uint32_t selector) { return ((_module) ? _module->GetData(__LINEAR_ACCELERATION__ + selector) : .0f); }
+            double GetData(uint32_t selector) { return ((_module) ? _module->GetData(__LINEAR_ACCELERATION__ + selector - __AXIS__) : .0f); }
         };
 
         class LinearVelocity : virtual public Data
@@ -844,7 +975,7 @@ namespace Orion
             }
 
             uint32_t GetType() { return __LINEAR_VELOCITY__; }
-            double Get(uint32_t selector) { return ((_module) ? _module->GetData(__LINEAR_VELOCITY__ + selector) : .0f); }
+            double Get(uint32_t selector) { return ((_module) ? _module->GetData(__LINEAR_VELOCITY__ + selector - __AXIS__) : .0f); }
         };
 
         class LinearDisplacement : virtual public Data
@@ -859,7 +990,7 @@ namespace Orion
             }
 
             uint32_t GetType() { return __LINEAR_DISPLACEMENT__; }
-            double GetData(uint32_t selector) { return ((_module) ? _module->GetData(__LINEAR_DISPLACEMENT__ + selector) : .0f); }
+            double GetData(uint32_t selector) { return ((_module) ? _module->GetData(__LINEAR_DISPLACEMENT__ + selector - __AXIS__) : .0f); }
         };
 
         class Magnetism : virtual public Data
@@ -874,7 +1005,7 @@ namespace Orion
             }
 
             uint32_t GetType() { return __MAGNETISM__; }
-            double GetData(uint32_t selector) { return ((_module) ? _module->GetData(__MAGNETISM_X__ + selector - 1) : .0f); }
+            double GetData(uint32_t selector) { return ((_module) ? _module->GetData(__MAGNETISM_X__ + selector - __AXIS__) : .0f); }
         };
     }
 }
@@ -882,6 +1013,7 @@ namespace Orion
 
 Orion::Modules::DataModules::Module* bme;
 Orion::Modules::DataModules::Module* bno;
+Orion::Modules::GPSModules::GPS* gps;
 
 Orion::Data::Data* pressure;
 Orion::Data::Data* temperature;
@@ -896,18 +1028,21 @@ Orion::Data::Data* linearVelocity;
 Orion::Data::Data* linearDisplacement;
 
 
+float data[29];
+
 char* radioPacket = (char*)malloc(252 * sizeof(char));
 char* sdPacket = (char*)malloc(1024 * sizeof(char));
 
+HardwareSerial* gpsSerial;
 File fptr;
 
 void setup()
 {
+    gpsSerial = &Serial3;
+
     bme = new Orion::Modules::DataModules::BME280();
     bno = new Orion::Modules::DataModules::BNO055();
-
-    bme->AutoUpdateInterval(50);
-    bno->AutoUpdateInterval(10);
+    gps = new Orion::Modules::GPSModules::MTK3339(gpsSerial);
 
     pressure = new Orion::Data::Pressure(bme);
     temperature = new Orion::Data::Temperature(bme);
@@ -926,7 +1061,6 @@ void setup()
 
 void loop()
 {
-    float data[26];
     data[0] = (float)millis();
     data[1] = (float)pressure->GetData(0);
     data[2] = (float)temperature->GetData(0);
@@ -953,18 +1087,35 @@ void loop()
     data[23] = (float)linearDisplacement->GetData(__X_AXIS__);
     data[24] = (float)linearDisplacement->GetData(__Y_AXIS__);
     data[25] = (float)linearDisplacement->GetData(__Z_AXIS__);
+    data[26] = (float)gps->GetData(__LONGITUDE__);
+    data[27] = (float)gps->GetData(__LATITUDE__);
+    data[28] = (float)gps->GetData(__ALTITUDE__);
 
     fptr = SD.open("Data.dat");
-    for (int i = 0; i < sizeof(data); i++)
+    for (int i = 0; i < 29; i++)
         radioPacket[i] = ((char*)&data)[i];
     radioPacket[sizeof(data)] = '\0';
 
+    for (int i = 0; i < sizeof(data) / sizeof(data[0]); i++)
+    {
+        Serial.print(data[i]);
+        Serial.print(" ");
+    }
+    Serial.println();
+
+    bme->Update();
+    bno->Update();
+    gps->Update();
+
     snprintf(sdPacket,
         1024,
-        "%f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f\n",
-        data[0], data[1], data[2], data[3], data[4], data[5], data[6], data[7], data[8], data[9], data[10], data[11], data[12],
-        data[13], data[14], data[15], data[16], data[17], data[18], data[19], data[20], data[21], data[22], data[23], data[24]);
+        "%f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f %f %f %f %f\n",
+        data[0], data[1], data[2], data[3], data[4], data[5], data[6], data[7], data[8], data[9], data[10], data[11], data[12], data[13], data[14],
+        data[15], data[16], data[17], data[18], data[19], data[20], data[21], data[22], data[23], data[24], data[25], data[26], data[27], data[28]);
 
-    fptr.write(sdPacket, strlen(sdPacket));
-    fptr.close();
+    if (fptr)
+    {
+        fptr.write(sdPacket, strlen(sdPacket));
+        fptr.close();
+    }
 }
