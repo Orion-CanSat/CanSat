@@ -11,14 +11,14 @@ Contibuting is a great way to help a project gain traction and take off. First a
 
 
 ## Meet our Team (In alphabetiac order)
-|             Name             |              Role                              | Introduction |
-| ---------------------------- | ---------------------------------------------- | ------------ |
-|        __Danae Veli__        |         Head of Electrical Engineering         |              |
-|    __Dennis Angelopoulos__   |         Head of Mechanical Engineering         |              |
-|     __Dimitris Balatos__     |          Head of Software Engineering          |              |
-|     __Giorgos Kaltsis__      |               Senior Data Analyst              |              |
-|              __Konstantinos Kritharidis__              |           Head of (Σύστημα Ανάκτησης)          |              |
-| [__Rikarnto Bariampa__](https://github.com/richardbar) | Head of Telemetry and Senior Software Engineer |              |
+|             Name             |                                   Role                                   |              Introduction              |
+| ---------------------------- | ------------------------------------------------------------------------ | -------------------------------------- |
+|        __Danae Veli__        |                  Head of Electrical Engineering                          |                                        |
+|    __Dennis Angelopoulos__   |      Head of Mechanical Engineering and Control Systems Development      |                                        |
+|     __Dimitris Balatos__     |                     Head of Software Engineering                         |                                        |
+|     __Giorgos Kaltsis__      |                         Senior Data Analyst                              |                                        |
+| __Konstantinos Kritharidis__ |                    Head of Recovery Systems                              |                                        |
+| [__Rikarnto Bariampa__](https://github.com/richardbar) | Head of Telemetry and Senior Software Engineer |                                        |
 
 
 ## Want to reach us?
