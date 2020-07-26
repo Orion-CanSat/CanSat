@@ -9,6 +9,7 @@ We are a team composed of 12 students of the [Model High School “Evangeliki Sc
 ## Do you want to contibute?
 Contibuting is a great way to help a project gain traction and take off. First and foremost you can fork the repository and start working on your own. Then you can create a pull request to merge it to our meain repository, or you can create your custom spin off of your programs. Beware you must be compilient with your license, AGPLv3.
 
+
 ## Meet our Team (In alphabetiac order)
 |             Name             |              Role                              | Introduction |
 | ---------------------------- | ---------------------------------------------- | ------------ |
@@ -18,8 +19,8 @@ Contibuting is a great way to help a project gain traction and take off. First a
 |     __Giorgos Kaltsis__      |               Senior Data Analyst              |              |
 |              __Konstantinos Kritharidis__              |           Head of (Σύστημα Ανάκτησης)          |              |
 | [__Rikarnto Bariampa__](https://github.com/richardbar) | Head of Telemetry and Senior Software Engineer |              |
-<br />
-<br />
+
+
 ## Want to reach us?
 If you have any question, please feel free to reach us in one of the following ways:
 * [__Email__](mailto:orioncantgr@gmail.com)
