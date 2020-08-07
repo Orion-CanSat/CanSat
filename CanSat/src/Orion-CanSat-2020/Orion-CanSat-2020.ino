@@ -18,6 +18,7 @@
  * richardbar:                  richard1996ba@gmail.com
  * jbalatos:                    jbalatos@gmail.com
  * konstantinosk31:             konstantinosk31@gmail.com
+ * dennisangelo:                denns999@gmail.com
  */
 
 
@@ -1008,6 +1009,45 @@ namespace Orion
             double GetData(uint32_t selector) { return ((_module) ? _module->GetData(__MAGNETISM_X__ + selector - __AXIS__) : .0f); }
         };
     }
+
+    namespace PID
+    {
+        class PID
+        {
+        public:
+            PID(double P, double I, double D)
+            {
+                this->P = P;
+                this->I = I;
+                this->D = D;
+                this->previousError = 0;
+                this->integral = 0;
+                this->output = 0;
+            }
+
+            void Update(double error, double dt)
+            {
+                // Calculate Proportional.
+                double proportional = error * P;
+
+                // Calculate Derivative.
+                double derivative = this->D * (error - this->previousError) / dt;
+                this->previousError = error;
+
+                // Calculate Integral.
+                this->integral += error * dt;
+                
+                // Set the output.
+                this->output = proportional + (this->I * this->integral) + derivative;
+            }
+            double GetOutput() { return output; }
+        private:
+            double P, I, D;
+            double previousError;
+            double integral;
+            double output;
+        }
+    }
 }
 
 
@@ -1027,8 +1067,10 @@ Orion::Data::Data* linearAcceleration;
 Orion::Data::Data* linearVelocity;
 Orion::Data::Data* linearDisplacement;
 
+Orion::PID::PID* pidController;
 
-float data[29];
+
+float data[30];
 
 char* radioPacket = (char*)malloc(252 * sizeof(char));
 char* sdPacket = (char*)malloc(1024 * sizeof(char));
@@ -1055,6 +1097,8 @@ void setup()
     linearAcceleration = new Orion::Data::LinearAcceleration(bno);
     linearVelocity = new Orion::Data::LinearVelocity(bno);
     linearDisplacement = new Orion::Data::LinearDisplacement(bno);
+
+    pidController = new Orion::PID::PID();
 
     SD.begin(BUILTIN_SDCARD);
 }
@@ -1090,7 +1134,9 @@ void loop()
     data[26] = (float)gps->GetData(__LONGITUDE__);
     data[27] = (float)gps->GetData(__LATITUDE__);
     data[28] = (float)gps->GetData(__ALTITUDE__);
+    data[29] = (float)pidController->getOutput();
 
+    // TODO: Write PID output to file!
     fptr = SD.open("Data.dat");
     for (int i = 0; i < 29; i++)
         radioPacket[i] = ((char*)&data)[i];
@@ -1106,6 +1152,7 @@ void loop()
     bme->Update();
     bno->Update();
     gps->Update();
+    // TODO: Write PID output to sdPacket!
 
     snprintf(sdPacket,
         1024,
