@@ -144,6 +144,44 @@ namespace Orion
 
     namespace Utilities
     {
+        namespace FlightController
+        {
+        class PID
+        {
+        public:
+            PID(double P, double I, double D)
+            {
+                this->P = P;
+                this->I = I;
+                this->D = D;
+                this->previousError = 0;
+                this->integral = 0;
+                this->output = 0;
+            }
+
+            void Update(double error, double dt)
+            {
+                // Calculate Proportional.
+                double proportional = error * P;
+
+                // Calculate Derivative.
+                double derivative = this->D * (error - this->previousError) / dt;
+                this->previousError = error;
+
+                // Calculate Integral.
+                this->integral += error * dt;
+                
+                // Set the output.
+                this->output = proportional + (this->I * this->integral) + derivative;
+            }
+            double GetOutput() { return output; }
+        private:
+            double P, I, D;
+            double previousError;
+            double integral;
+            double output;
+        }
+    }
         class Timeout
         {
             public:
@@ -962,45 +1000,6 @@ namespace Orion
             double GetData(uint32_t selector) { return ((_module) ? _module->GetData(__MAGNETISM__ + selector - __AXIS__) : .0f); }
         };
     }
-
-    namespace PID
-    {
-        class PID
-        {
-        public:
-            PID(double P, double I, double D)
-            {
-                this->P = P;
-                this->I = I;
-                this->D = D;
-                this->previousError = 0;
-                this->integral = 0;
-                this->output = 0;
-            }
-
-            void Update(double error, double dt)
-            {
-                // Calculate Proportional.
-                double proportional = error * P;
-
-                // Calculate Derivative.
-                double derivative = this->D * (error - this->previousError) / dt;
-                this->previousError = error;
-
-                // Calculate Integral.
-                this->integral += error * dt;
-                
-                // Set the output.
-                this->output = proportional + (this->I * this->integral) + derivative;
-            }
-            double GetOutput() { return output; }
-        private:
-            double P, I, D;
-            double previousError;
-            double integral;
-            double output;
-        }
-    }
 }
 
 
@@ -1057,7 +1056,7 @@ Orion::Data::Data* linearDisplacement;
 RH_RF95* rfm = new RH_RF95(4, 3);
 bool rfmInit = false;
 
-Orion::PID::PID* pidController;
+Orion::Utilities::FlightController::PID* pidController;
 
 
 uint32_t time = 0;
@@ -1104,7 +1103,7 @@ void setup()
     linearVelocity = new Orion::Data::LinearVelocity(bno);
     linearDisplacement = new Orion::Data::LinearDisplacement(bno);
 
-    pidController = new Orion::PID::PID();
+    pidController = new Orion::Utilities::FlightController::PID();
 
     SD.begin(BUILTIN_SDCARD);
 }
@@ -1143,7 +1142,6 @@ void loop()
     data[28] = (float)gps->GetData(__ALTITUDE__);
     data[29] = (float)pidController->getOutput();
 
-    // TODO: Write PID output to file!
     fptr = SD.open("Data.dat");
     for (int i = 0; i < sizeof(data); i++)
         radioPacket[i] = ((char*)&data)[i];
