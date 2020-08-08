@@ -56,11 +56,15 @@
 #define __BME280__ 0x000001
 #define __BNO055__ 0x000002
 #define __SD__ 0x000101
+#define __GPS__ 0x0010000
 #define __MTK3339__ 0x010001
+#define __CAMERA__ 0x010100
+#define __OV5642__ 0x010101
 
 #if defined(__BME280__)
     #include <Adafruit_BME280.h>
 #endif
+
 #if defined(__BNO055__)
     #include <Adafruit_BNO055.h>
     #include <utility/imumaths.h>
@@ -74,7 +78,7 @@
     #include <Adafruit_GPS.h>
 #endif
 
-#if defined(TEENSY)
+#if defined(__TEENSY__)
     #include <TeensyThreads.h>
 #endif
 
@@ -123,9 +127,8 @@
 #define __MAGNETISM_Y__ 0x00001F
 #define __MAGNETISM_Z__ 0x000020
 
-#define __GPS__ 0x000021
-#define __LATITUDE__ 0x000022
-#define __LONGITUDE__ 0x000023
+#define __LATITUDE__ 0x000021
+#define __LONGITUDE__ 0x000022
 
 
 #define __AXIS__ 0x10000
@@ -336,48 +339,6 @@ namespace Orion
                 return true;
             }
         };
-    
-        namespace Buffers
-        {
-            class Buffer
-            {
-            protected:
-                char* _buffer;
-                size_t _end, _size;
-                bool _bufferInitialized, _inUse;
-            public:
-                Buffer(size_t bufferSize)
-                {
-                    _inUse = true;
-                    _size = bufferSize;
-                    _inUse = 0;
-                    _buffer = (char*)malloc(_size * sizeof(char));
-                    _bufferInitialized = (_buffer != nullptr);
-                    _inUse = false;
-                }
-
-                bool Append(const char* str, size_t size)
-                {
-                    while (_inUse) delay(10);
-                    _inUse = true;
-                    if (_inUse + size < _size || !_bufferInitialized) return false;
-                    for (size_t i = _end; i < _end + size; i++)
-                        _buffer[i] = str[i - _end];
-                    _end += size;
-                    _inUse = false;
-                    return true;
-                }
-                bool Append(const char* str) { return Append(str, sizeof(str)); }
-
-                virtual void Use() { }
-                virtual void AutoUseInterval(uint32_t interval) { }
-
-                ~Buffer()
-                {
-                    free(_buffer);
-                }
-            };
-        }
     }
 
     namespace Modules
@@ -389,6 +350,18 @@ namespace Orion
             protected:
                 void* _devicePtr = nullptr;
                 uint32_t _timeOfLastUpdate = 0;
+                uint32_t _updateInterval;
+
+                #if defined(__TEENSY__)
+                static void AsyncUpdate(Module* module)
+                {
+                    while (true)
+                    {
+                        module->Update();
+                        delay(module->_updateInterval);
+                    }
+                }
+                #endif
             public:
                 bool _initState = false;
                 Module() { }
@@ -399,7 +372,13 @@ namespace Orion
                 virtual double GetData(uint32_t type) { return .0f; }
                 
                 virtual void Update() { }
-                virtual void AutoUpdateInterval(uint32_t interval) { }
+                #if defined(__TEENSY__)
+                void AutoUpdateInterval(uint32_t interval)
+                {
+                    _updateInterval = interval;
+                    threads.addThread(Module::AsyncUpdate, this);
+                }
+                #endif
 
                 uint32_t GetLastUpdateTime() { return _timeOfLastUpdate; }
 
@@ -412,23 +391,12 @@ namespace Orion
                 class BME280 : virtual public Module
                 {
                 private:
-                    double _temperature = .0f, _humidity = .0f, _pressure = .0f, _altitude = .0f;
-                    uint32_t _updateInterval;
+                    double _temperature = NAN, _humidity = NAN, _pressure = NAN, _altitude = NAN;
                 public:
                     static bool InitBME280(void* bme)
                     {
                         return (((Adafruit_BME280*)bme) ? ((Adafruit_BME280*)bme)->begin() : false);
                     }
-                    #if defined(TEENSY)
-                    static void AsyncUpdate(BME280* Bme)
-                    {
-                        while (true)
-                        {
-                            Bme->Update();
-                            delay(Bme->_updateInterval);
-                        }
-                    }
-                    #endif
 
                     BME280() : Module(nbc)
                     {
@@ -485,13 +453,6 @@ namespace Orion
                         }
                         _timeOfLastUpdate = millis();
                     }
-                    #if defined(TEENSY)
-                    void AutoUpdateInterval(uint32_t interval)
-                    {
-                        _updateInterval = interval;
-                        threads.addThread(BME280::AsyncUpdate, this);
-                    }
-                    #endif
                 };
             #endif
 
@@ -510,7 +471,6 @@ namespace Orion
                     uint32_t _timerLast = 0;
                     Utilities::Matrix<double> RotationMatrix;
                     Utilities::Vector<double> NNAcceleration, NAcceleration;
-                    uint32_t _updateInterval;
                     
                     void CalculateSpeed()
                     {
@@ -562,16 +522,6 @@ namespace Orion
                     {
                         return (((Adafruit_BNO055*)bno) ? ((Adafruit_BNO055*)bno)->begin() : false);
                     }
-                    #if defined(TEENSY)
-                    static void AsyncUpdate(BNO055* Bno)
-                    {
-                        while (true)
-                        {
-                            Bno->Update();
-                            delay(Bno->_updateInterval);
-                        }
-                    }
-                    #endif
 
                     BNO055() : Module(nbc)
                     {
@@ -655,7 +605,6 @@ namespace Orion
                         _timerLast = _timeOfLastUpdate;
                         if (_initState)
                         {
-                            Serial.println("Got Here1");
                             imu::Vector<3> euler = ((Adafruit_BNO055*)_devicePtr)->getVector(Adafruit_BNO055::VECTOR_EULER);
                             imu::Vector<3> gyro = ((Adafruit_BNO055*)_devicePtr)->getVector(Adafruit_BNO055::VECTOR_GYROSCOPE);
                             imu::Vector<3> grav = ((Adafruit_BNO055*)_devicePtr)->getVector(Adafruit_BNO055::VECTOR_GRAVITY);
@@ -676,7 +625,6 @@ namespace Orion
                             _magnetismX = magn.x();
                             _magnetismY = magn.y();
                             _magnetismZ = magn.z();
-                            Serial.println("Got Here2");
                         }
                         else
                         {
@@ -697,19 +645,9 @@ namespace Orion
                             _magnetismZ = .0f;
                         }
                         _timeOfLastUpdate = millis();
-                        Serial.println("Got Here3");
                         NormalizeAcceleration();
-                        Serial.println("Got Here4");
                         CalculateSpeed();
-                        Serial.println("Got Here5");
                     }
-                    #if defined(TEENSY)
-                    void AutoUpdateInterval(uint32_t interval)
-                    {
-                        _updateInterval = interval;
-                        threads.addThread(BNO055::AsyncUpdate, this);
-                    }
-                    #endif
                 };
             #endif
         }
@@ -775,8 +713,7 @@ namespace Orion
                 }
         
                 virtual void Update() { }
-                virtual void AutoUpdateInterval(uint32_t interval) { }
-
+                
                 virtual bool Transmit(uint32_t* message, uint32_t size) { return false; }
                 virtual uint32_t* Receive(int32_t timout = -1) { return nullptr; }
 
@@ -813,17 +750,33 @@ namespace Orion
             };
             #endif
         }
-
-        namespace IOModules
+    
+        namespace Camera
         {
-            class SD : virtual public Utilities::Buffers::Buffer
+            class Camera : virtual public DataModules::Module
             {
-            public:
-                SD(size_t bufferSize, int chipSelect) : Buffer(bufferSize)
-                {
+            protected:
+                char* (*namingFunc)();
 
-                }
+            public:
+                Camera(char* (*nmFunc)()) : Module(nbc) { namingFunc = nmFunc; }
+                Camera(char* (*nmFunc)(), noBaseClass)  : Module(nbc) { namingFunc = nmFunc; }
+
+                uint32_t GetType() { return __CAMERA__; }
+                bool HasDataType(uint32_t type) { return false; }
+                double GetData(uint32_t type) { return NAN; }
+
+                virtual void Update();
+
+                virtual ~Camera() { }                
             };
+
+            #if defined(__OV5642__)
+            class OV5642 : virtual public Camera
+            {
+            
+            };
+            #endif
         }
     }
     
@@ -1005,11 +958,45 @@ namespace Orion
             }
 
             uint32_t GetType() { return __MAGNETISM__; }
-            double GetData(uint32_t selector) { return ((_module) ? _module->GetData(__MAGNETISM_X__ + selector - __AXIS__) : .0f); }
+            double GetData(uint32_t selector) { return ((_module) ? _module->GetData(__MAGNETISM__ + selector - __AXIS__) : .0f); }
         };
     }
 }
 
+
+void HALT(char* params, uint8_t length)
+{
+    if (length == 0)
+        return;
+    uint32_t timeToHALT = 0;
+    if (!sscanf(params, "%zu", &timeToHALT) && length == 4)
+        timeToHALT = *((uint32_t*)params);
+    delay(timeToHALT);
+}
+
+uint8_t buzzerPin = 4;
+bool buzzerState = false;
+void BUZZER(char* params, uint8_t length)
+{
+    if (length == 0)
+        buzzerState = !buzzerState;
+    else if (length == 1)
+        buzzerState = params[0];
+    digitalWrite(buzzerPin, buzzerState);
+}
+
+void (*functionArray[])(char* params, uint8_t length) = {
+    HALT,
+    BUZZER
+};
+
+void RunOP(char* bcode, uint8_t length)
+{
+    uint16_t func = *((uint16_t*)bcode);
+    functionArray[func]((char*)((int)bcode + 2), length - 2);
+}
+
+#include <RH_RF95.h>
 
 Orion::Modules::DataModules::Module* bme;
 Orion::Modules::DataModules::Module* bno;
@@ -1027,10 +1014,15 @@ Orion::Data::Data* linearAcceleration;
 Orion::Data::Data* linearVelocity;
 Orion::Data::Data* linearDisplacement;
 
+RH_RF95* rfm = new RH_RF95(4, 3);
+bool rfmInit = false;
 
 float data[29];
 
-char* radioPacket = (char*)malloc(252 * sizeof(char));
+uint32_t time = 0;
+uint32_t timeOfLastPacketSent = 0;
+
+char* radioPacket = (char*)malloc(240 * sizeof(char));
 char* sdPacket = (char*)malloc(1024 * sizeof(char));
 
 HardwareSerial* gpsSerial;
@@ -1043,6 +1035,19 @@ void setup()
     bme = new Orion::Modules::DataModules::BME280();
     bno = new Orion::Modules::DataModules::BNO055();
     gps = new Orion::Modules::GPSModules::MTK3339(gpsSerial);
+
+    if (rfm->init() && rfm->setFrequency(433.3))
+    {
+        rfm->setTxPower(23, false);
+        rfmInit = true;
+    }
+
+    bme->AutoUpdateInterval(50);
+    bno->AutoUpdateInterval(10);
+    gps->AutoUpdateInterval(10);
+
+    pinMode(buzzerPin, OUTPUT);
+    digitalWrite(buzzerPin, 1);
 
     pressure = new Orion::Data::Pressure(bme);
     temperature = new Orion::Data::Temperature(bme);
@@ -1061,7 +1066,8 @@ void setup()
 
 void loop()
 {
-    data[0] = (float)millis();
+    time = millis();
+    data[0] = (float)time;
     data[1] = (float)pressure->GetData(0);
     data[2] = (float)temperature->GetData(0);
     data[3] = (float)humidity->GetData(0);
@@ -1092,7 +1098,7 @@ void loop()
     data[28] = (float)gps->GetData(__ALTITUDE__);
 
     fptr = SD.open("Data.dat");
-    for (int i = 0; i < 29; i++)
+    for (int i = 0; i < sizeof(data); i++)
         radioPacket[i] = ((char*)&data)[i];
     radioPacket[sizeof(data)] = '\0';
 
@@ -1103,19 +1109,38 @@ void loop()
     }
     Serial.println();
 
-    bme->Update();
-    bno->Update();
-    gps->Update();
-
-    snprintf(sdPacket,
-        1024,
-        "%f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f %f %f %f %f\n",
-        data[0], data[1], data[2], data[3], data[4], data[5], data[6], data[7], data[8], data[9], data[10], data[11], data[12], data[13], data[14],
-        data[15], data[16], data[17], data[18], data[19], data[20], data[21], data[22], data[23], data[24], data[25], data[26], data[27], data[28]);
-
     if (fptr)
     {
+        snprintf(sdPacket,
+            1024,
+            "%f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f %f %f %f %f %f\n",
+            data[0], data[1], data[2], data[3], data[4], data[5], data[6], data[7], data[8], data[9], data[10], data[11], data[12], data[13], data[14],
+            data[15], data[16], data[17], data[18], data[19], data[20], data[21], data[22], data[23], data[24], data[25], data[26], data[27], data[28], data[29]);
         fptr.write(sdPacket, strlen(sdPacket));
         fptr.close();
+    }
+
+    if (Serial.available())
+    {
+        String message = "  ";
+        uint8_t length = message.length();
+
+        if (length >= 2)
+            RunOP((char*)message.c_str(), length);
+    }
+    if (rfm->available())
+    {
+        char* message;
+        uint8_t length;
+        rfm->recv((uint8_t*)message, &length);
+
+        if (length >= 2)
+            RunOP(message, length);
+    }
+    if (rfmInit && timeOfLastPacketSent + 50 < time)
+    {
+        if (rfm->send((uint8_t*)radioPacket, sizeof(data) + 1))
+            rfm->waitPacketSent();
+        timeOfLastPacketSent = time;
     }
 }
