@@ -84,6 +84,10 @@
 
 #include <SoftwareSerial.h>
 
+#include <Crypto.h>
+#include <AES.h>
+#include <CTR.h>
+
 #define __MAX__TIMEOUT__FUNCTION__ 10000
 
 
@@ -330,8 +334,8 @@ namespace Orion
                 }
                 for (uint16_t i = 0; i < m._rows; i++)
                 {
-                    result._vector[i] = m._matrix[i][0] * v._vector[0];
-                    for (uint16_t j = 1; j < m._columns; j++)
+                    result._vector[i] = 0;
+                    for (uint16_t j = 0; j < m._columns; j++)
                     {
                         result._vector[i] += m._matrix[i][j] * v._vector[j];
                     }
@@ -339,6 +343,154 @@ namespace Orion
                 return true;
             }
         };
+    
+        namespace Cryptos
+        {
+            class Crypto
+            {
+            protected:
+                uint8_t* publicKey;
+                uint8_t* privateKey;
+
+                uint8_t* input = NULL;
+                uint16_t inputSize = 0;
+                uint8_t* output = NULL;
+                uint16_t outputSize = 0;
+
+                void FreeInputOutput()
+                {
+                    if (input)
+                        free(input);
+                    inputSize = 0;
+                    if (output)
+                        free(output);
+                    outputSize = 0;
+                }
+            public:
+                bool _initialized = false;
+
+                virtual bool Encrypt(uint8_t* message, uint16_t length) { return false; }
+                virtual bool Decrypt(uint8_t* message, uint16_t length) { return false; }
+            
+                uint16_t GetOutput(uint8_t** messageLocation)
+                {
+                    *messageLocation = (uint8_t*)malloc(this->outputSize);
+                    memcpy(*messageLocation, this->output, this->outputSize);
+                }
+            };
+
+            class AES256CTR : public virtual Crypto
+            {
+            private:
+                uint8_t* iv;
+                CTR<AES256>* aes;
+
+                void ResetKeyIV()
+                {
+                    if (!_initialized)
+                        return;
+                    
+                    this->aes->setKey(this->privateKey, 16);
+                    this->aes->setIV(this->iv, 16);
+                }
+            public:
+                AES256CTR(uint8_t* key, uint8_t* iv)
+                {
+                    this->privateKey = (uint8_t*)malloc(16);
+                    if (!this->privateKey)
+                        return;
+                    memcpy(this->privateKey, key, 16);
+                    this->iv = (uint8_t*)malloc(16);
+                    if (!this->iv)
+                    {
+                        free(this->privateKey);
+                        return;
+                    }
+                    memcpy(this->iv, iv, 16);
+                    this->aes = (CTR<AES256>*)malloc(sizeof(CTR<AES256>));
+                    if (!this->aes)
+                    {
+                        free(this->privateKey);
+                        free(this->iv);
+                        return;
+                    }
+                    *this->aes = CTR<AES256>();
+                    
+                    ResetKeyIV();
+
+                    _initialized = true;
+                }
+
+                bool Encrypt(uint8_t* message, uint16_t length)
+                {
+                    if (!_initialized)
+                        return false;
+
+                    FreeInputOutput();
+
+                    input = (uint8_t*)malloc(length);
+                    if (!input) return false;
+                    inputSize = length;
+
+                    output = (uint8_t*)malloc(length);
+                    if (!output)
+                    {
+                        free(input);
+                        return false;
+                    }
+                    outputSize = length;
+
+                    uint8_t* tinput = (uint8_t*)memcpy(input, message, length);
+                    if (tinput != input)
+                    {
+                        free(input);
+                        free(output);
+                        return false;
+                    }
+                    this->aes->encrypt(this->output, this->input, length);
+                    ResetKeyIV();
+                    return true;
+                }
+
+                virtual bool Decrypt(uint8_t* message, uint16_t length)
+                {
+                    if (!_initialized)
+                        return false;
+
+                    FreeInputOutput();
+
+                    input = (uint8_t*)malloc(length);
+                    if (!input) return false;
+                    inputSize = length;
+
+                    output = (uint8_t*)malloc(length);
+                    if (!output)
+                    {
+                        free(input);
+                        free(output);
+                        return false;
+                    }
+                    outputSize = length;
+
+                    uint8_t* tinput = (uint8_t*)memcpy(input, message, length);
+                    if (tinput != input)
+                    {
+                        free(input);
+                        return false;
+                    }
+                    this->aes->decrypt(this->output, this->input, length);
+                    ResetKeyIV();
+                    return true;
+                }
+
+                ~AES256CTR()
+                {
+                    free(this->privateKey);
+                    free(this->iv);
+                    _initialized = false;
+                }
+            };
+        }
     }
 
     namespace Modules
@@ -471,16 +623,18 @@ namespace Orion
                     uint32_t _timerLast = 0;
                     Utilities::Matrix<double> RotationMatrix;
                     Utilities::Vector<double> NNAcceleration, NAcceleration;
-                    
+
+                    void CalculateDisplacement()
+                    {
+                        double deltaT = (_timeOfLastUpdate - _timerLast) / 1000.0;
+                        _displacementX += _velocityX * deltaT;
+                        _displacementY += _velocityY * deltaT;
+                        _displacementZ += _velocityZ * deltaT;
+                    }
+
                     void CalculateSpeed()
                     {
-                        _normalizedAccelerationX = _linearAccelerationX;
-                        _normalizedAccelerationY = _linearAccelerationY;
-                        _normalizedAccelerationZ = _linearAccelerationZ;
                         double deltaT = (_timeOfLastUpdate - _timerLast) / 1000.0;
-                        _displacementX += _velocityX * deltaT * 1.0 + (_normalizedAccelerationX * deltaT * deltaT * .5);
-                        _displacementY += _velocityY * deltaT * 1.0 + (_normalizedAccelerationY * deltaT * deltaT * .5);
-                        _displacementZ += _velocityZ * deltaT * 1.0 + (_normalizedAccelerationZ * deltaT * deltaT * .5);
                         _velocityX += _normalizedAccelerationX * deltaT;
                         _velocityY += _normalizedAccelerationY * deltaT;
                         _velocityZ += _normalizedAccelerationZ * deltaT;
@@ -496,7 +650,7 @@ namespace Orion
 
                         RotationMatrix._matrix[0][0] = cos(psi) * cos(theta);
                         RotationMatrix._matrix[0][1] = cos(psi) * sin(phi) * sin(theta) - cos(phi) * sin(psi);
-                        RotationMatrix._matrix[0][2] = sin(phi) * sin(psi) * cos(phi) * cos(psi) * sin(theta);
+                        RotationMatrix._matrix[0][2] = sin(phi) * sin(psi) + cos(phi) * cos(psi) * sin(theta);
 
                         RotationMatrix._matrix[1][0] = cos(theta) * sin(psi);
                         RotationMatrix._matrix[1][1] = cos(phi) * cos(psi) + sin(phi) * sin(psi) * sin(theta);
@@ -647,6 +801,7 @@ namespace Orion
                         _timeOfLastUpdate = millis();
                         NormalizeAcceleration();
                         CalculateSpeed();
+                        CalculateDisplacement();
                     }
                 };
             #endif
@@ -928,7 +1083,7 @@ namespace Orion
             }
 
             uint32_t GetType() { return __LINEAR_VELOCITY__; }
-            double Get(uint32_t selector) { return ((_module) ? _module->GetData(__LINEAR_VELOCITY__ + selector - __AXIS__) : .0f); }
+            double GetData(uint32_t selector) { return ((_module) ? _module->GetData(__LINEAR_VELOCITY__ + selector - __AXIS__) : .0f); }
         };
 
         class LinearDisplacement : virtual public Data
@@ -1000,7 +1155,9 @@ void RunOP(char* bcode, uint8_t length)
 
 Orion::Modules::DataModules::Module* bme;
 Orion::Modules::DataModules::Module* bno;
+#if defined(__TEENSY__)
 Orion::Modules::GPSModules::GPS* gps;
+#endif
 
 Orion::Data::Data* pressure;
 Orion::Data::Data* temperature;
@@ -1014,6 +1171,8 @@ Orion::Data::Data* linearAcceleration;
 Orion::Data::Data* linearVelocity;
 Orion::Data::Data* linearDisplacement;
 
+Orion::Utilities::Cryptos::Crypto* crypto;
+
 RH_RF95* rfm = new RH_RF95(4, 3);
 bool rfmInit = false;
 
@@ -1025,16 +1184,34 @@ uint32_t timeOfLastPacketSent = 0;
 char* radioPacket = (char*)malloc(240 * sizeof(char));
 char* sdPacket = (char*)malloc(1024 * sizeof(char));
 
+#if defined(__TEENSY__)
 HardwareSerial* gpsSerial;
+#endif
 File fptr;
+
+uint8_t key[] = { 0x00, 0x00, 0x00, 0x00,
+                  0x00, 0x00, 0x00, 0x00,
+                  0x00, 0x00, 0x00, 0x00,
+                  0x00, 0x00, 0x00, 0x00 };
+
+uint8_t iv[] = { 0x00, 0x00, 0x00, 0x00,
+                 0x00, 0x00, 0x00, 0x00,
+                 0x00, 0x00, 0x00, 0x00,
+                 0x00, 0x00, 0x00, 0x00 };
 
 void setup()
 {
+    #if defined(__TEENSY__)
     gpsSerial = &Serial3;
+    #endif
 
     bme = new Orion::Modules::DataModules::BME280();
     bno = new Orion::Modules::DataModules::BNO055();
+    #if defined(__TEENSY__)
     gps = new Orion::Modules::GPSModules::MTK3339(gpsSerial);
+    #endif
+
+    crypto = new Orion::Utilities::Cryptos::AES256CTR(&(key[0]), &(iv[0]));
 
     if (rfm->init() && rfm->setFrequency(433.3))
     {
@@ -1042,9 +1219,11 @@ void setup()
         rfmInit = true;
     }
 
+#if defined(__TEENSY__)
     bme->AutoUpdateInterval(50);
     bno->AutoUpdateInterval(10);
-    gps->AutoUpdateInterval(10);
+    gps->AutoUpdateInterval(5);
+#endif
 
     pinMode(buzzerPin, OUTPUT);
     digitalWrite(buzzerPin, 1);
@@ -1061,7 +1240,11 @@ void setup()
     linearVelocity = new Orion::Data::LinearVelocity(bno);
     linearDisplacement = new Orion::Data::LinearDisplacement(bno);
 
+    #if defined(__TEENSY__)
     SD.begin(BUILTIN_SDCARD);
+    #else
+    SD.begin(4);
+    #endif
 }
 
 void loop()
@@ -1093,14 +1276,29 @@ void loop()
     data[23] = (float)linearDisplacement->GetData(__X_AXIS__);
     data[24] = (float)linearDisplacement->GetData(__Y_AXIS__);
     data[25] = (float)linearDisplacement->GetData(__Z_AXIS__);
+    #if defined(__TEENSY__)
     data[26] = (float)gps->GetData(__LONGITUDE__);
     data[27] = (float)gps->GetData(__LATITUDE__);
     data[28] = (float)gps->GetData(__ALTITUDE__);
+    #else
+    data[26] = 0;
+    data[27] = 0;
+    data[28] = 0;
+    #endif
+
+#if not defined(__TEENSY__)
+    bme->Update();
+    bno->Update();
+    gps->Update();
+#endif
 
     fptr = SD.open("Data.dat");
     for (int i = 0; i < sizeof(data); i++)
         radioPacket[i] = ((char*)&data)[i];
     radioPacket[sizeof(data)] = '\0';
+    crypto->Encrypt(radioPacket, sizeof(data) + 1);
+    uint8_t* encryptedText;
+    uint16_t encryptedLength = crypto->GetOutput(&encryptedText);
 
     for (int i = 0; i < sizeof(data) / sizeof(data[0]); i++)
     {
@@ -1137,9 +1335,9 @@ void loop()
         if (length >= 2)
             RunOP(message, length);
     }
-    if (rfmInit && timeOfLastPacketSent + 50 < time)
+    if (rfmInit && timeOfLastPacketSent + 50 < time && encryptedLength)
     {
-        if (rfm->send((uint8_t*)radioPacket, sizeof(data) + 1))
+        if (rfm->send(encryptedLength, encryptedLength))
             rfm->waitPacketSent();
         timeOfLastPacketSent = time;
     }
