@@ -1,0 +1,38 @@
+{
+    "configurations": [
+        {
+            "name": "Orion CanSat",
+            "includePath": [
+                "CanSat/src/**",
+                "C:/DEV/Arduino/hardware/teensy/avr/cores/teensy3",
+                "CanSat/lib/ArduCAM/**",
+                "CanSat/lib/Crypto/**",
+                "CanSat/lib/DRV8835/**",
+                "CanSat/lib/Adafruit_BME280_Library/**",
+                "CanSat/lib/SD/**",
+                "CanSat/lib/SPI/**",
+                "CanSat/lib/Wire/**",
+                "CanSat/lib/SoftwareSerial/**",
+                "CanSat/lib/Adafruit_GPS_Library/**",
+                "CanSat/lib/Adafruit_BNO055/**",
+                "CanSat/lib/Adafruit_Unified_Sensor/**",
+                "CanSat/lib/RadioHead/**",
+                "CanSat/lib/EEPROM/**",
+                "CanSat/include/**"
+            ],
+            "forcedInclude": [],
+            "defines": [
+                "__MK66FX1M0__",
+                "TEENSYDUINO=153",
+                "ARDUINO_TEENSY36",
+                "F_CPU=256000000",
+                "USB_SERIAL",
+                "LAYOUT_US_ENGLISH",
+                "ARDUINO"
+            ],
+                "compilerPath": "C:/DEV/Arduino/hardware/tools/arm/bin/arm-none-eabi-gcc.exe",
+                "intelliSenseMode": "gcc-x64"
+        }
+    ],
+    "version": 4
+}

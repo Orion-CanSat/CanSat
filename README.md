@@ -31,6 +31,9 @@ If you have any question, please feel free to reach us in one of the following w
 &nbsp;
 ## F.A.Q.
 ---
+### __Q: Why abandon the Arduino IDE and Arduino Ecosystem?__
+### __A:__ We felt that the Arduino IDE was very limiting and overall caused us many problems. By moving away from it and starting to use VisualTeensy as an intermediate step we are hoping to move to an all independent toolchain (provided by ARM LTD) that will increase our code's efficiency, compile time, diagnostic data and increase the toolchain's stability as well.
+&nbsp;
 ### __Q: Why did you make v0.4 and v0.5 obsolete?__
 ### __A:__ We chose to make the v0. 4 and v0.5 obsolete due to some problems with the development of some of the CanSat's subsystems. Some of those subsystems included the Memory Management System (__MMS__), the first version of the Automatic Flight Controller (__AFC__) and the buffers that would've been used for the storage and sending of the data collected. Those problems lead us to make the v0.4 and v0.5 obsolete. Some of the source code of those subsystems did not make it to GitHub while other parts of the source code where not committed and or pushed. We are committed to re-introducing those features in version v0.6 and v0.7 and polish them for the v0.8.
 &nbsp;

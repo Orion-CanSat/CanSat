@@ -1,0 +1,42 @@
+{
+  "version": "1",
+  "target": "vsCode",
+  "buildSystem": "makefile",
+  "debugSupport": "none",
+  "configurations": [
+    {
+      "name": "default",
+      "guid": "d3a931e3-4bbc-43c0-bd8d-644b4f33bd35",
+      "setupType": "quick",
+      "coreBase": "C:\\DEV\\Arduino\\hardware\\teensy\\avr",
+      "compilerBase": "C:\\DEV\\Arduino\\hardware\\tools\\arm",
+      "makefileExtension": null,
+      "copyCore": false,
+      "sharedLibraries": [ ],
+      "projectLibraries": [
+        "Adafruit_BME280_Library",
+        "SD",
+        "SPI",
+        "Wire",
+        "SoftwareSerial",
+        "Adafruit_GPS_Library-1.5.2.zip",
+        "Adafruit_BNO055-1.4.1.zip",
+        "Adafruit_Unified_Sensor-1.1.4.zip",
+        "RadioHead",
+        "EEPROM",
+        "ArduCAM",
+        "Crypto",
+        "DRV8835"
+      ],
+      "board": {
+        "name": "Teensy 3.6",
+        "options": {
+          "USB Type": "Serial",
+          "CPU Speed": "256 MHz (overclock)",
+          "Optimize": "Fastest",
+          "Keyboard Layout": "US English"
+        }
+      }
+    }
+  ]
+}
