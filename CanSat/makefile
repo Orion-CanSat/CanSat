@@ -18,7 +18,7 @@ BOARD_ID         := TEENSY36
 MCU              := mk66fx1m0
 
 LIBS_LOCAL_BASE  := lib
-LIBS_LOCAL       := Adafruit_BME280_Library SD SPI Wire SoftwareSerial Adafruit_GPS_Library Adafruit_BNO055 Adafruit_Unified_Sensor RadioHead EEPROM ArduCAM Crypto DRV8835 
+LIBS_LOCAL       := Adafruit_BME280_Library SD SPI Wire SoftwareSerial Adafruit_GPS_Library Adafruit_BNO055 Adafruit_Unified_Sensor RadioHead EEPROM ArduCAM Crypto DRV8835 Orion-Libraries 
 
 CORE_BASE        := C:\DEV\Arduino\hardware\teensy\avr\cores\teensy3
 GCC_BASE         := C:\DEV\Arduino\hardware\tools\arm\bin

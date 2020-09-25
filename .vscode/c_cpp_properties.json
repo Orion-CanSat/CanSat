@@ -18,7 +18,8 @@
                 "CanSat/lib/Adafruit_Unified_Sensor/**",
                 "CanSat/lib/RadioHead/**",
                 "CanSat/lib/EEPROM/**",
-                "CanSat/include/**"
+                "CanSat/include/**",
+                "CanSat/lib/Orion-Libraries/**"
             ],
             "forcedInclude": [],
             "defines": [
