@@ -1,0 +1,3 @@
+[submodule "CanSat/lib/Orion-Libraries"]
+	path = CanSat/lib/Orion-Libraries
+	url = https://github.com/Orion-CanSat/Orion-Libraries.git
