@@ -18,12 +18,9 @@ BOARD_ID         := TEENSY36
 MCU              := mk66fx1m0
 
 LIBS_LOCAL_BASE  := lib
-LIBS_LOCAL       := Adafruit_BME280_Library SD SPI Wire SoftwareSerial Adafruit_GPS_Library Adafruit_BNO055 Adafruit_Unified_Sensor RadioHead EEPROM ArduCAM Crypto DRV8835 Orion-Libraries 
+LIBS_LOCAL       := Adafruit_BME280 SD SPI Wire SoftwareSerial Adafruit_GPS Adafruit_BNO055 Adafruit_Sensor RadioHead EEPROM ArduCAM Crypto DRV8835 Orion-Libraries 
 
-CORE_BASE        := C:\DEV\Arduino\hardware\teensy\avr\cores\teensy3
-GCC_BASE         := C:\DEV\Arduino\hardware\tools\arm\bin
-UPL_PJRC_B       := C:\DEV\Arduino\hardware\tools
-UPL_TYCMD_B      := C:\DEV\Arduino\hardware\tools
+CORE_BASE        := Core\teensy3
 
 #******************************************************************************
 # Flags and Defines
@@ -79,16 +76,16 @@ TARGET_LST  := $(BIN)/$(TARGET_NAME).lst
 #******************************************************************************
 # BINARIES
 #******************************************************************************
-CC          := $(GCC_BASE)/arm-none-eabi-gcc
-CXX         := $(GCC_BASE)/arm-none-eabi-g++
-AR          := $(GCC_BASE)/arm-none-eabi-gcc-ar
-OBJCOPY     := $(GCC_BASE)/arm-none-eabi-objcopy
-SIZE        := $(GCC_BASE)/arm-none-eabi-size
-OBJDUMP     := $(GCC_BASE)/arm-none-eabi-objdump
-UPL_PJRC    := "$(UPL_PJRC_B)/teensy_post_compile" -test -file=$(TARGET_NAME) -path=$(BIN) -tools="$(UPL_PJRC_B)" -board=$(BOARD_ID) -reboot
-UPL_TYCMD   := $(UPL_TYCMD_B)/tyCommanderC upload $(TARGET_HEX) --autostart --wait --multi
-UPL_CLICMD  := $(UPL_CLICMD_B)/teensy_loader_cli -mmcu=$(MCU) -v $(TARGET_HEX)
-UPL_JLINK   := $(UPL_JLINK_B)/jlink -commanderscript .vsteensy/flash.jlink
+CC          := arm-none-eabi-gcc
+CXX         := arm-none-eabi-g++
+AR          := arm-none-eabi-gcc-ar
+OBJCOPY     := arm-none-eabi-objcopy
+SIZE        := arm-none-eabi-size
+OBJDUMP     := arm-none-eabi-objdump
+UPL_PJRC    := teensy_post_compile -test -file=$(TARGET_NAME) -path=$(BIN) -tools="$(UPL_PJRC_B)" -board=$(BOARD_ID) -reboot
+UPL_TYCMD   := tyCommanderC upload $(TARGET_HEX) --autostart --wait --multi
+UPL_CLICMD  := teensy_loader_cli -mmcu=$(MCU) -v $(TARGET_HEX)
+UPL_JLINK   := jlink -commanderscript .vsteensy/flash.jlink
 
 #******************************************************************************
 # Source and Include Files

@@ -1,3 +1,39 @@
+[submodule "CanSat/lib/Adafruit_BME280"]
+	path = CanSat/lib/Adafruit_BME280
+	url = https://github.com/adafruit/Adafruit_BME280_Library/
+[submodule "CanSat/lib/Adafruit_BNO055"]
+	path = CanSat/lib/Adafruit_BNO055
+	url = https://github.com/adafruit/Adafruit_BNO055
+[submodule "CanSat/lib/Adafruit_GPS"]
+	path = CanSat/lib/Adafruit_GPS
+	url = https://github.com/adafruit/Adafruit_GPS/
+[submodule "CanSat/lib/DRV8835"]
+	path = CanSat/lib/DRV8835
+	url = https://github.com/richardbar/DRV8835
 [submodule "CanSat/lib/Orion-Libraries"]
 	path = CanSat/lib/Orion-Libraries
-	url = https://github.com/Orion-CanSat/Orion-Libraries.git
+	url = https://github.com/Orion-CanSat/Orion-Libraries
+[submodule "CanSat/lib/Adafruit_Sensor"]
+	path = CanSat/lib/Adafruit_Sensor
+	url = https://github.com/adafruit/Adafruit_Sensor
+[submodule "CanSat/lib/RadioHead"]
+	path = CanSat/lib/RadioHead
+	url = https://github.com/PaulStoffregen/RadioHead.git
+[submodule "CanSat/lib/SD"]
+	path = CanSat/lib/SD
+	url = git@github.com:PaulStoffregen/SD.git
+[submodule "CanSat/Core"]
+	path = CanSat/Core
+	url = git@github.com:PaulStoffregen/cores.git
+[submodule "CanSat/lib/SPI"]
+	path = CanSat/lib/SPI
+	url = git@github.com:PaulStoffregen/SPI.git
+[submodule "CanSat/lib/SoftwareSerial"]
+	path = CanSat/lib/SoftwareSerial
+	url = https://github.com/PaulStoffregen/SoftwareSerial
+[submodule "CanSat/lib/Wire"]
+	path = CanSat/lib/Wire
+	url = https://github.com/PaulStoffregen/Wire
+[submodule "CanSat/lib/EEPROM"]
+	path = CanSat/lib/EEPROM
+	url = https://github.com/PaulStoffregen/EEPROM
