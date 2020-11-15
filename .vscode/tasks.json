@@ -6,7 +6,7 @@
                 "kind": "build",
                 "isDefault": true
             },
-            "command": "C:/DEV/VisualTeensy/make.exe",
+            "command": "make",
             "args": [
                 "-C",
                 "CanSat",
@@ -21,41 +21,11 @@
                 "kind": "build",
                 "isDefault": true
             },
-            "command": "C:/DEV/VisualTeensy/make.exe",
+            "command": "make.exe",
             "args": [
                 "-C",
                 "CanSat",
                 "clean"
-            ]
-        },
-        {
-            "label": "Upload (teensy.exe)",
-            "group": {
-                "kind": "build",
-                "isDefault": true
-            },
-            "command": "C:/DEV/VisualTeensy/make.exe",
-            "args": [
-                "-C",
-                "CanSat",
-                "upload",
-                "-j",
-                "-Otarget"
-            ]
-        },
-        {
-            "label": "Upload (TyCommander)",
-            "group": {
-                "kind": "build",
-                "isDefault": true
-            },
-            "command": "C:/DEV/VisualTeensy/make.exe",
-            "args": [
-                "-C",
-                "CanSat",
-                "uploadTy",
-                "-j",
-                "-Otarget"
             ]
         }
     ],

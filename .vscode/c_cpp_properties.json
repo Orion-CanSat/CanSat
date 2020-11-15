@@ -3,23 +3,22 @@
         {
             "name": "Orion CanSat",
             "includePath": [
-                "CanSat/src/**",
-                "C:/DEV/Arduino/hardware/teensy/avr/cores/teensy3",
+                "CanSat/include/**",
+                "CanSat/Core/teensy3/**",
+                "CanSat/lib/Adafruit_BME280/**",
+                "CanSat/lib/Adafruit_BNO055/**",
+                "CanSat/lib/Adafruit_GPS/**",
+                "CanSat/lib/Adafruit_Sensor/**",
                 "CanSat/lib/ArduCAM/**",
                 "CanSat/lib/Crypto/**",
                 "CanSat/lib/DRV8835/**",
-                "CanSat/lib/Adafruit_BME280_Library/**",
-                "CanSat/lib/SD/**",
-                "CanSat/lib/SPI/**",
-                "CanSat/lib/Wire/**",
-                "CanSat/lib/SoftwareSerial/**",
-                "CanSat/lib/Adafruit_GPS_Library/**",
-                "CanSat/lib/Adafruit_BNO055/**",
-                "CanSat/lib/Adafruit_Unified_Sensor/**",
-                "CanSat/lib/RadioHead/**",
                 "CanSat/lib/EEPROM/**",
-                "CanSat/include/**",
-                "CanSat/lib/Orion-Libraries/**"
+                "CanSat/lib/Orion-Libraries/**",
+                "CanSat/lib/RadioHead/**",
+                "CanSat/lib/SD/**",
+                "CanSat/lib/SoftwareSerial/**",
+                "CanSat/lib/SPI/**",
+                "CanSat/lib/Wire/**"
             ],
             "forcedInclude": [],
             "defines": [
@@ -32,7 +31,7 @@
                 "ARDUINO"
             ],
                 "compilerPath": "C:/DEV/Arduino/hardware/tools/arm/bin/arm-none-eabi-gcc.exe",
-                "intelliSenseMode": "gcc-x64"
+                "intelliSenseMode": "gcc-arm"
         }
     ],
     "version": 4
