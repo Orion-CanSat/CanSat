@@ -9,7 +9,11 @@
 			"statusBar.background": "#00cc6a"
 		},
 		"files.autoSave": "afterDelay",
-		"files.autoSaveDelay": 100
+		"files.autoSaveDelay": 100,
+		"files.associations": {
+			"bitset": "cpp",
+			"set": "cpp"
+		}
 	},
 	"extensions": {
 		"recommendations": [
