@@ -1,39 +1,39 @@
-[submodule "CanSat/lib/Adafruit_BME280"]
-	path = CanSat/lib/Adafruit_BME280
+[submodule "lib/Adafruit_BME280"]
+	path = lib/Adafruit_BME280
 	url = https://github.com/adafruit/Adafruit_BME280_Library/
-[submodule "CanSat/lib/Adafruit_BNO055"]
-	path = CanSat/lib/Adafruit_BNO055
+[submodule "lib/Adafruit_BNO055"]
+	path = lib/Adafruit_BNO055
 	url = https://github.com/adafruit/Adafruit_BNO055
-[submodule "CanSat/lib/Adafruit_GPS"]
-	path = CanSat/lib/Adafruit_GPS
+[submodule "lib/Adafruit_GPS"]
+	path = lib/Adafruit_GPS
 	url = https://github.com/adafruit/Adafruit_GPS/
-[submodule "CanSat/lib/DRV8835"]
-	path = CanSat/lib/DRV8835
+[submodule "lib/DRV8835"]
+	path = lib/DRV8835
 	url = https://github.com/richardbar/DRV8835
-[submodule "CanSat/lib/Orion-Libraries"]
-	path = CanSat/lib/Orion-Libraries
+[submodule "lib/Orion-Libraries"]
+	path = lib/Orion-Libraries
 	url = https://github.com/Orion-CanSat/Orion-Libraries
-[submodule "CanSat/lib/Adafruit_Sensor"]
-	path = CanSat/lib/Adafruit_Sensor
+[submodule "lib/Adafruit_Sensor"]
+	path = lib/Adafruit_Sensor
 	url = https://github.com/adafruit/Adafruit_Sensor
-[submodule "CanSat/lib/RadioHead"]
-	path = CanSat/lib/RadioHead
+[submodule "lib/RadioHead"]
+	path = lib/RadioHead
 	url = https://github.com/PaulStoffregen/RadioHead.git
-[submodule "CanSat/lib/SD"]
-	path = CanSat/lib/SD
+[submodule "lib/SD"]
+	path = lib/SD
 	url = git@github.com:PaulStoffregen/SD.git
-[submodule "CanSat/Core"]
-	path = CanSat/Core
+[submodule "Core"]
+	path = Core
 	url = git@github.com:PaulStoffregen/cores.git
-[submodule "CanSat/lib/SPI"]
-	path = CanSat/lib/SPI
+[submodule "lib/SPI"]
+	path = lib/SPI
 	url = git@github.com:PaulStoffregen/SPI.git
-[submodule "CanSat/lib/SoftwareSerial"]
-	path = CanSat/lib/SoftwareSerial
+[submodule "lib/SoftwareSerial"]
+	path = lib/SoftwareSerial
 	url = https://github.com/PaulStoffregen/SoftwareSerial
-[submodule "CanSat/lib/Wire"]
-	path = CanSat/lib/Wire
+[submodule "lib/Wire"]
+	path = lib/Wire
 	url = https://github.com/PaulStoffregen/Wire
-[submodule "CanSat/lib/EEPROM"]
-	path = CanSat/lib/EEPROM
+[submodule "lib/EEPROM"]
+	path = lib/EEPROM
 	url = https://github.com/PaulStoffregen/EEPROM

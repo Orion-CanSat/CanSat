@@ -12,7 +12,8 @@
 		"files.autoSaveDelay": 100,
 		"files.associations": {
 			"bitset": "cpp",
-			"set": "cpp"
+			"set": "cpp",
+			"utility": "cpp"
 		}
 	},
 	"extensions": {
@@ -21,8 +22,6 @@
 			"donjayamanne.githistory",
 			"ms-vscode.cpptools",
 			"ms-vscode.csharp",
-			"vsciot-vscode.vscode-arduino",
-			"xabikos.JavaScriptSnippets",
 			"aaron-bond.better-comments"
 		]
 	}

@@ -8,8 +8,6 @@
             },
             "command": "make",
             "args": [
-                "-C",
-                "CanSat",
                 "all",
                 "-j",
                 "-Otarget"
@@ -23,8 +21,6 @@
             },
             "command": "make.exe",
             "args": [
-                "-C",
-                "CanSat",
                 "clean"
             ]
         }
