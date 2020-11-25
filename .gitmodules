@@ -1,0 +1,39 @@
+[submodule "lib/Adafruit_BME280"]
+	path = lib/Adafruit_BME280
+	url = https://github.com/adafruit/Adafruit_BME280_Library/
+[submodule "lib/Adafruit_BNO055"]
+	path = lib/Adafruit_BNO055
+	url = https://github.com/adafruit/Adafruit_BNO055
+[submodule "lib/Adafruit_GPS"]
+	path = lib/Adafruit_GPS
+	url = https://github.com/adafruit/Adafruit_GPS/
+[submodule "lib/DRV8835"]
+	path = lib/DRV8835
+	url = https://github.com/richardbar/DRV8835
+[submodule "lib/Orion-Libraries"]
+	path = lib/Orion-Libraries
+	url = https://github.com/Orion-CanSat/Orion-Libraries
+[submodule "lib/Adafruit_Sensor"]
+	path = lib/Adafruit_Sensor
+	url = https://github.com/adafruit/Adafruit_Sensor
+[submodule "lib/RadioHead"]
+	path = lib/RadioHead
+	url = https://github.com/PaulStoffregen/RadioHead.git
+[submodule "lib/SD"]
+	path = lib/SD
+	url = git@github.com:PaulStoffregen/SD.git
+[submodule "Core"]
+	path = Core
+	url = git@github.com:PaulStoffregen/cores.git
+[submodule "lib/SPI"]
+	path = lib/SPI
+	url = git@github.com:PaulStoffregen/SPI.git
+[submodule "lib/SoftwareSerial"]
+	path = lib/SoftwareSerial
+	url = https://github.com/PaulStoffregen/SoftwareSerial
+[submodule "lib/Wire"]
+	path = lib/Wire
+	url = https://github.com/PaulStoffregen/Wire
+[submodule "lib/EEPROM"]
+	path = lib/EEPROM
+	url = https://github.com/PaulStoffregen/EEPROM

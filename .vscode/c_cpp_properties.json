@@ -1,0 +1,37 @@
+{
+    "configurations": [
+        {
+            "name": "Orion CanSat",
+            "includePath": [
+                "include/**",
+                "Core/teensy4/**",
+                "lib/Adafruit_BME280/**",
+                "lib/Adafruit_BNO055/**",
+                "lib/Adafruit_GPS/**",
+                "lib/Adafruit_Sensor/**",
+                "lib/ArduCAM/**",
+                "lib/Crypto/**",
+                "lib/DRV8835/**",
+                "lib/EEPROM/**",
+                "lib/Orion-Libraries/**",
+                "lib/RadioHead/**",
+                "lib/SD/**",
+                "lib/SoftwareSerial/**",
+                "lib/SPI/**",
+                "lib/Wire/**"
+            ],
+            "forcedInclude": [],
+            "defines": [
+                "__IMXRT1062__",
+                "TEENSYDUINO=153",
+                "ARDUINO_TEENSY41",
+                "F_CPU=600000000",
+                "USB_SERIAL",
+                "LAYOUT_US_ENGLISH",
+                "ARDUINO"
+            ],
+                "intelliSenseMode": "gcc-arm"
+        }
+    ],
+    "version": 4
+}

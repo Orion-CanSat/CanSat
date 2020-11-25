@@ -1,0 +1,9 @@
+*.c linguist-language=C
+*.h linguist-language=C
+
+*.cpp linguist-language=C++
+*.hpp linguist-language=C++
+
+*.S linguist-language=Assemnly
+
+makefile linguist-language=Makefile
