@@ -37,3 +37,6 @@
 [submodule "lib/EEPROM"]
 	path = lib/EEPROM
 	url = https://github.com/PaulStoffregen/EEPROM
+[submodule "lib/TeensyThreads"]
+	path = lib/TeensyThreads
+	url = https://github.com/ftrias/TeensyThreads.git

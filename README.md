@@ -1,5 +1,9 @@
 # Orion II CanSat
 
+## How to compile
+Firstly you will need make and arm-none-eabi-gcc. Then navigate to Core/teensy4/ and delete main.cpp. After that just time `make all` or just `make`. This should automatically compile the whole program.
+
+&nbsp;
 ## Who are we?
 We are a team composed of 12 students of the [Model High School “Evangeliki Scholi Smyrna”](http://lyk-evsch-n-smyrn.att.sch.gr/wordpress/?p=1322). For the fourth consecutive time we are participating in the Panhellenic competition "[CanSat in Greece](https://cansat.gr/)", a qualifier of the Pan-European competition "[CanSats in Europe](http://www.esa.int/SPECIALS/CanSat/SEMXTDCKP6G_0.html)", organized by ESA (European Space Agency) for the last 8 years. Our team is called Orion II and our supervisor is Dr. Christos Fanidis.
 
