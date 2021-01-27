@@ -14,62 +14,53 @@
 
 #include "Orion.h"
 
-#include "Orion/Modules/DataModules/TeensyChipTemperature.hpp"
+#include "Orion/Utilities/Memory/shared_ptr.hpp"
+#include "Orion/Utilities/Memory/unique_ptr.hpp"
+
 #include "Orion/Modules/DataModules/BME280.hpp"
 #include "Orion/Modules/DataModules/BNO055.hpp"
+#include "Orion/Modules/DataModules/TeensyChipTemperature.hpp"
 
 #include "Orion/Data/Alitutde.hpp"
 #include "Orion/Data/Pressure.hpp"
 #include "Orion/Data/Temperature.hpp"
 
+#include "internalTempController.hpp"
+
 
 extern float tempmonGetTemp(void);
 
-Orion::Modules::DataModules::TeensyChipTemperature* _teensyChipTemperature = nullptr;
-Orion::Modules::DataModules::BME280* _bme = nullptr;
-Orion::Modules::DataModules::BNO055* _bno = nullptr;
+Orion::Utilities::Memory::shared_ptr<Orion::Modules::DataModules::TeensyChipTemperature> _teensyChipTemperature =
+    new Orion::Modules::DataModules::TeensyChipTemperature();
+Orion::Utilities::Memory::shared_ptr<Orion::Modules::DataModules::BME280> _bme =
+    new Orion::Modules::DataModules::BME280();
+Orion::Utilities::Memory::shared_ptr<Orion::Modules::DataModules::BNO055> _bno =
+    new Orion::Modules::DataModules::BNO055();
 
-Orion::Data::Altitude<Orion::Modules::DataModules::BME280> _altitude;
-Orion::Data::Pressure<Orion::Modules::DataModules::BME280> _pressure;
-Orion::Data::Temperature<Orion::Modules::DataModules::BME280> _temperature;
-Orion::Data::Temperature<Orion::Modules::DataModules::TeensyChipTemperature> _chipTemperature;
+Orion::Utilities::Memory::shared_ptr<Orion::Data::Altitude> _altitude;
+Orion::Utilities::Memory::shared_ptr<Orion::Data::Pressure> _pressure;
+Orion::Utilities::Memory::shared_ptr<Orion::Data::Temperature> _temperature;
+Orion::Utilities::Memory::shared_ptr<Orion::Data::Temperature> _chipTemperature;
 
+Orion::Utilities::Memory::unique_ptr<bool> testb = new bool(false);;
 
 int main(void)
 {
     Serial.begin(9600);
 
-    Serial.println("Starting Chip Temperature");
-        _teensyChipTemperature = new Orion::Modules::DataModules::TeensyChipTemperature();
-    Serial.println("Chip Temperature initialized");
+    if (!SetUpInternalTempController(_teensyChipTemperature.get()))
+    {
 
-    Serial.println("Starting BME");
-        _bme = new Orion::Modules::DataModules::BME280();
-    Serial.println(((!_bme || !_bme->IsInitialized()) ? "BME Initialized" : "BME did not initlize"));
+    }
 
-    Serial.println("Starting BNO");
-        _bno = new Orion::Modules::DataModules::BNO055();
-    Serial.println(((!_bno || !_bno->IsInitialized()) ? "BNO Initialized" : "BNO did not initlize"));
-
-    _altitude = Orion::Data::Altitude<Orion::Modules::DataModules::BME280>(_bme);
-    _pressure = Orion::Data::Pressure<Orion::Modules::DataModules::BME280>(_bme);
-    _temperature = Orion::Data::Temperature<Orion::Modules::DataModules::BME280>(_bme);
-    _chipTemperature = Orion::Data::Temperature<Orion::Modules::DataModules::TeensyChipTemperature>(_teensyChipTemperature);
+    _altitude = new Orion::Data::Altitude(_bme.get());
+    _chipTemperature = new Orion::Data::Temperature(_teensyChipTemperature.get());
+    _pressure = new Orion::Data::Pressure(_bme.get());
+    _temperature = new Orion::Data::Temperature(_bme.get());
 
     while (true)
     {
-        if (!_bme)
-            Serial.println("BME did not initialize and returned null");
-        if (!_bme->IsInitialized())
-            Serial.println("BME did not initialize");
-        
-        if (!_bno)
-            Serial.println("BNO did not initialize and returned null");
-        if (!_bno->IsInitialized())
-            Serial.println("BNO did not initialize");
-
-        _teensyChipTemperature->Update();
-        Serial.println(_teensyChipTemperature->GetData(__TEMPERATURE__));
+        RunTemperatureCheck();
 
         delay(1000);
         yield();

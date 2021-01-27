@@ -19,6 +19,7 @@
                 "lib/SoftwareSerial/*",
                 "lib/SPI/*",
                 "lib/Wire/*",
+                "C:/DEV/Arduino/hardware/tools/arm/lib/gcc/arm-none-eabi/5.4.1/include/*"
             ],
             "forcedInclude": [],
             "defines": [
