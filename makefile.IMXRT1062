@@ -70,7 +70,7 @@ FLAGS_S             := -x assembler-with-cpp
 FLAGS_LD            := -Wl,--print-memory-usage,--gc-sections,--relax,--defsym=__rtc_localtime=$(DateTime) -T$(CORE_BASE)/imxrt1062_t41.ld
 
 LIBS                := -larm_cortexM7lfsp_math -lm -lstdc++
-DEFINES             := -D__IMXRT1062__ -DTEENSYDUINO=153 -DARDUINO_TEENSY41 -DF_CPU=600000000 -DUSB_SERIAL -DLAYOUT_US_ENGLISH -DARDUINO=10807
+DEFINES             := -D__IMXRT1062__ -DTEENSYDUINO=153 -DARDUINO_TEENSY41 -DF_CPU=600000000 -DUSB_SERIAL -DLAYOUT_US_ENGLISH -DARDUINO=10807 -D_DEBUG
 
 CPP_FLAGS           := $(FLAGS_CPU) $(FLAGS_OPT) $(FLAGS_COM) $(DEFINES) $(FLAGS_CPP)
 C_FLAGS             := $(FLAGS_CPU) $(FLAGS_OPT) $(FLAGS_COM) $(DEFINES) $(FLAGS_C)

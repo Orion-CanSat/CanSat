@@ -3,7 +3,7 @@
         {
             "name": "Orion CanSat",
             "includePath": [
-                "include/*",
+                "include/**",
                 "Core/teensy4/*",
                 "lib/Adafruit_BME280/*",
                 "lib/Adafruit_BNO055/*",
@@ -29,7 +29,8 @@
                 "F_CPU=600000000",
                 "USB_SERIAL",
                 "LAYOUT_US_ENGLISH",
-                "ARDUINO"
+                "ARDUINO",
+                "_DEBUG"
             ],
                 "intelliSenseMode": "gcc-arm"
         }

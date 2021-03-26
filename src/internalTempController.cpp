@@ -1,9 +1,5 @@
 #include "wiring.h"
 
-#include "Orion.h"
-#include "Orion/Data/Temperature.hpp"
-#include "Orion/Utilities/Memory/unique_ptr.hpp"
-
 #include "internalTempController.hpp"
 
 extern "C" uint32_t set_arm_clock(uint32_t frequency);
@@ -20,7 +16,7 @@ static int32_t speeds[] = {
 static int currentIndex = 5;
 static int speedsLength = 6;
 
-static Orion::Modules::DataModules::TeensyChipTemperature* _internalTempModule;
+static Orion::Sensors::Sensor* _internalTempModule;
 
 void TemperaturePanic()
 {
@@ -33,30 +29,30 @@ void TemperaturePanic()
         __asm__ __volatile__("nop");
 }
 
-bool SetUpInternalTempController(Orion::Modules::DataModules::TeensyChipTemperature* internalTempModule)
+bool SetUpInternalTempController(Orion::Sensors::Sensor* internalTempModule)
 {
     if (internalTempModule == nullptr)
         return false;
     _internalTempModule = internalTempModule;
 
-    SetPanic(true);
-    SetPanicCallback(TemperaturePanic);
+    //SetPanic(true);
+    //SetPanicCallback(TemperaturePanic);
 
     return true;
 }
 
 
-decPlace GetInternalTemperature()
+float GetInternalTemperature()
 {
     _internalTempModule->Update();
-    return _internalTempModule->GetData(__TEMPERATURE__);
+    return _internalTempModule->GetDataType(__TEMPERATURE__);
 }
 
 
 int32_t RunTemperatureCheck()
 {
     bool changeOccured = false;
-    decPlace temperature = GetInternalTemperature();
+    float temperature = GetInternalTemperature();
     if (temperature == NAN)
         return -1;
 
@@ -73,7 +69,7 @@ int32_t RunTemperatureCheck()
         if (sum / pickSampleNum > 90)
         {
             set_arm_clock(speeds[0]);
-            Panic();
+            //Panic();
         }
     }
     else if (temperature > 75)

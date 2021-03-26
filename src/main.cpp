@@ -8,62 +8,183 @@
 // Time of creation: 2020/12/05 12:57
 //-------------------------------------------------------------------------------------------------------------------------------------------------
 
+#ifdef ARDUINO
+    #include <Arduino.h>
+    #include <SD.h>
+#endif
+
+#include <Orion/Orion.hpp>
+#include <Orion/Data/Alitutde.hpp>
+#include <Orion/Data/Humidity.hpp>
+#include <Orion/Data/Pressure.hpp>
+#include <Orion/Data/Temperature.hpp>
+#include <Orion/Sensors/BME280.hpp>
+#include <Orion/Sensors/BNO055.hpp>
+#include <Orion/Sensors/Sensor.hpp>
+#include <Orion/Sensors/TeensyChipTemperature.hpp>
+#include <Orion/Sensors/GPS/Coordinates.hpp>
+#include <Orion/Sensors/GPS/GPS.hpp>
+
+#include "Debug.hpp"
 #include "main.hpp"
-
-#include "Arduino.h"
-
-#include "Orion.h"
-
-#include "Orion/Utilities/Memory/shared_ptr.hpp"
-#include "Orion/Utilities/Memory/unique_ptr.hpp"
-
-#include "Orion/Modules/DataModules/BME280.hpp"
-#include "Orion/Modules/DataModules/BNO055.hpp"
-#include "Orion/Modules/DataModules/TeensyChipTemperature.hpp"
-
-#include "Orion/Data/Alitutde.hpp"
-#include "Orion/Data/Pressure.hpp"
-#include "Orion/Data/Temperature.hpp"
-
-#include "internalTempController.hpp"
 
 
 extern float tempmonGetTemp(void);
 
-Orion::Utilities::Memory::shared_ptr<Orion::Modules::DataModules::TeensyChipTemperature> _teensyChipTemperature =
-    new Orion::Modules::DataModules::TeensyChipTemperature();
-Orion::Utilities::Memory::shared_ptr<Orion::Modules::DataModules::BME280> _bme =
-    new Orion::Modules::DataModules::BME280();
-Orion::Utilities::Memory::shared_ptr<Orion::Modules::DataModules::BNO055> _bno =
-    new Orion::Modules::DataModules::BNO055();
+Orion::Sensors::Sensor* BME280 = NULL;
+Orion::Sensors::Sensor* BNO055 = NULL;
+Orion::Sensors::Sensor* TeensyChipTemperature = NULL;
 
-Orion::Utilities::Memory::shared_ptr<Orion::Data::Altitude> _altitude;
-Orion::Utilities::Memory::shared_ptr<Orion::Data::Pressure> _pressure;
-Orion::Utilities::Memory::shared_ptr<Orion::Data::Temperature> _temperature;
-Orion::Utilities::Memory::shared_ptr<Orion::Data::Temperature> _chipTemperature;
+Orion::Data::Data* Altitude = NULL;
+Orion::Data::Data* EnvHumidity = NULL;
+Orion::Data::Data* EnvPressure = NULL;
+Orion::Data::Data* EnvTemperature = NULL;
+Orion::Data::Data* ChipTemperature = NULL;
 
-Orion::Utilities::Memory::unique_ptr<bool> testb = new bool(false);;
+#ifdef _DEBUG
+File logFile;
+#endif
+
+void InitializeBetelgeuse() {
+    BME280 = new Orion::Sensors::BME280(__I2C__);
+    if (BME280 && BME280->IsInitialized()) {
+        DEBUG("BME280: State: Init");
+    }
+    else {
+        DEBUG("BME280: State: Not Init");
+    }
+
+    BNO055 = new Orion::Sensors::BNO055(__I2C__);
+    if (BNO055 && BNO055->IsInitialized()) {
+        DEBUG("BNO055: State: Init");
+    }
+    else {
+        DEBUG("BNO055: State: Not Init");
+    }
+
+    TeensyChipTemperature = new Orion::Sensors::TeensyChipTemperature((uint8_t)10);
+    if (TeensyChipTemperature && TeensyChipTemperature->IsInitialized()) {
+        DEBUG("TeensyChipTemperature: State: Init");
+    }
+    else {
+        DEBUG("TeensyChipTemperature: State: Not Init");
+    }
+
+    
+    Altitude = new Orion::Data::Altitude(BME280);
+    if (Altitude && Altitude->IsInitialized()) {
+        DEBUG("Altitude: State: Init");
+    }
+    else {
+        DEBUG("Altitude: State: Not Init");
+    }
+
+    EnvHumidity = new Orion::Data::Humidity(BME280);
+    if (EnvHumidity && EnvHumidity->IsInitialized()) {
+        DEBUG("EnvHumidity: State: Init");
+    }
+    else {
+        DEBUG("EnvHumidity: State: Not Init");
+    }
+
+    EnvPressure = new Orion::Data::Pressure(BME280);
+    if (EnvPressure && EnvPressure->IsInitialized()) {
+        DEBUG("Pressure: State: Init");
+    }
+    else {
+        DEBUG("EnvPressure: State: Not Init");
+    }
+
+    EnvTemperature = new Orion::Data::Temperature(BME280);
+    if (EnvTemperature && EnvTemperature->IsInitialized()) {
+        DEBUG("EnvTemperature: State: Init");
+    }
+    else {
+        DEBUG("EnvTemperature: State: Not Init");
+    }
+
+    ChipTemperature = new Orion::Data::Temperature(TeensyChipTemperature);
+    if (ChipTemperature && ChipTemperature->IsInitialized()) {
+        DEBUG("ChipTemperature: State: Init");
+    }
+    else {
+        DEBUG("ChipTemperature: State: Not Init");
+    }
+}
+
+void UpdateBetelgeuse() {
+    DEBUG("BME280: Update: Starting");
+    if (BME280) {
+        DEBUG("BME280: Update: On Wait");
+        BME280->Update();
+        DEBUG("BME280: Update: Success");
+    }
+    else {
+        DEBUG("BME280: Update: Failed");
+    }
+    DEBUG("BME280: Update: Finished");
+
+
+    DEBUG("BNO055: Update: Starting");
+    if (BNO055) {
+        DEBUG("BNO055: Update: On Wait");
+        BNO055->Update();
+        DEBUG("BNO055: Update: Success");
+    }
+    else {
+        DEBUG("BNO055: Update: Failed");
+    }
+    DEBUG("BNO055: Update: Finished");
+
+    DEBUG("TeensyChipTemperature: Update: Starting");
+    if (TeensyChipTemperature) {
+        DEBUG("TeensyChipTemperature: Update: On Wait");
+        TeensyChipTemperature->Update();
+        DEBUG("TeensyChipTemperature: Update: Success");
+    }
+    else {
+        DEBUG("TeensyChipTemperature: Update: Failed");
+    }
+    DEBUG("TeensyChipTemperature: Update: Finished");
+}
+
 
 int main(void)
 {
     Serial.begin(9600);
+    delay(100);
+    SD.begin(BUILTIN_SDCARD);
+    delay(100);
 
-    if (!SetUpInternalTempController(_teensyChipTemperature.get()))
-    {
+#ifdef _DEBUG
+    logFile = SD.open("log.txt", FILE_WRITE);
+    delay(100);
+#endif
 
+    InitializeBetelgeuse();
+
+    char* message = (char*)malloc(1024);
+    if (!message) {
+        Serial.println("Can not create Message Buffer");
+        while (true)
+            __asm__ ("nop");
     }
-
-    _altitude = new Orion::Data::Altitude(_bme.get());
-    _chipTemperature = new Orion::Data::Temperature(_teensyChipTemperature.get());
-    _pressure = new Orion::Data::Pressure(_bme.get());
-    _temperature = new Orion::Data::Temperature(_bme.get());
-
     while (true)
     {
-        RunTemperatureCheck();
+        DEBUG("Starting Update");
+        UpdateBetelgeuse();
+        DEBUG("Ending Update");
+
+        float altitude = Altitude->Get();
+        float envhumidity = EnvHumidity->Get();
+        float envpressure = EnvPressure->Get();
+        float envtemperature = EnvTemperature->Get();
+        float chiptemperature = ChipTemperature->Get();
+
+        snprintf(message, 1024, "%.2f %.2f %.2f %.2f %.2f", altitude, envhumidity, envpressure, envtemperature, chiptemperature);
+        Serial.println(message);
 
         delay(1000);
         yield();
     }
 }
-
