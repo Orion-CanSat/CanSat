@@ -11,7 +11,7 @@ We are a team composed of 12 students of the [Model High School “Evangeliki Sc
 Contibuting is a great way to help a project gain traction and take off. First and foremost you can fork the repository and start working on your own. Then you can create a pull request to merge it to our meain repository, or you can create your custom spin off of your programs. Beware you must be compilient with your license, AGPLv3.
 
 &nbsp;
-## Meet our Team (In alphabetiac order)
+## Meet our Team (In alphabetical order)
 |                                Name                                |                              Role                              |                                                                                                                                     Introduction                                                                                                                                    |
 | ------------------------------------------------------------------ | -------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 |                           __Danae Veli__                           |                 Head of Electrical Engineering                 |                               My name is Danae Veli and I am a student at Model High School "Evangeliki Scholi Smyrna". I am a part of team Orion II and I am in charge of the electrical design. My main duty is to design the PCBs for the project.                               |
