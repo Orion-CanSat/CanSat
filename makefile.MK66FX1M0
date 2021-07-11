@@ -5,7 +5,7 @@
 # CPU Speed:        256000000
 # Optimization:     -O3
 # 
-# Time of creation: 2020/12/05 12:57
+# Time of creation: 2021/04/01 12:00
 #-------------------------------------------------------------------------------------------------------------------------------------------------
 
 #MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
@@ -52,7 +52,7 @@ BOARD_ID            := TEENSY36
 MCU                 := mk66fx1m0
 
 LIBS_DIR            := lib
-LIBS_NAMES          := Adafruit_BME280 Adafruit_BNO055 Adafruit_GPS Adafruit_Sensor ArduCAM Crypto DRV8835 EEPROM Orion-Libraries RadioHead SD SoftwareSerial SPI TeensyThreads Wire
+LIBS_NAMES          := Adafruit_BME280 Adafruit_BMP280 Adafruit_BNO055 Adafruit_GPS Adafruit_Sensor ArduCAM Crypto DRV8835 EEPROM Orion-Libraries RadioHead SD SoftwareSerial SPI TeensyThreads Wire
 CORE_BASE           := Core/teensy3
 
 

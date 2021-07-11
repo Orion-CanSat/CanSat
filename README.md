@@ -1,7 +1,7 @@
 # Orion II CanSat
 
 ## How to compile
-Firstly you will need make and arm-none-eabi-gcc. Then navigate to Core/teensy4/ and delete main.cpp. After that just time `make all` or just `make`. This should automatically compile the whole program.
+Firstly you will need make and arm-none-eabi-gcc 5. Then navigate to Core/teensy4/ and delete main.cpp. After that just time `make all` or just `make`. This should automatically compile the whole program.
 
 &nbsp;
 ## Who are we?
@@ -43,3 +43,5 @@ If you have any question, please feel free to reach us in one of the following w
 &nbsp;
 ### __Q: Why did you choose to not include a Universal RF module?__
 ### __A:__ The [RadioHead Library](http://www.airspayce.com/mikem/arduino/RadioHead/) provides a good, simple and coherent way to communicate with a wide range of RF modules. That is why in our code we will be using the RadioHead Library instead of making an inhouse compatibility layer which will be time consuming and is generally not worth it.
+### __Q: Why make two makefiles?__
+### __A:__ The two makefiles are responsible for compiling the program for the Teensy 3.6 and Teensy 4.1 as we would like to still support the Teensy used in the Greek competition of "[CanSat in Greece](https://cansat.gr/)". It does not add or remove any functionality. Some pin numbers might differ but the Core functionality stays the same.

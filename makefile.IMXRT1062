@@ -52,7 +52,7 @@ BOARD_ID            := TEENSY41
 MCU                 := imxrt1062_t41
 
 LIBS_DIR            := lib
-LIBS_NAMES          := Adafruit_BME280 Adafruit_BNO055 Adafruit_GPS Adafruit_Sensor ArduCAM Crypto DRV8835 EEPROM Orion-Libraries RadioHead SD SoftwareSerial SPI TeensyThreads Wire
+LIBS_NAMES          := Adafruit_BME280 Adafruit_BMP280 Adafruit_BNO055 Adafruit_GPS Adafruit_Sensor ArduCAM Crypto DRV8835 EEPROM Orion-Libraries RadioHead SD SoftwareSerial SPI TeensyThreads Wire
 CORE_BASE           := Core/teensy4
 
 
