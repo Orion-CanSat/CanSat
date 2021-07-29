@@ -1,4 +1,6 @@
-#include "wiring.h"
+#include <wiring.h>
+
+#include <Orion.h>
 
 #include "internalTempController.hpp"
 
@@ -35,8 +37,8 @@ bool SetUpInternalTempController(Orion::Sensors::Sensor* internalTempModule)
         return false;
     _internalTempModule = internalTempModule;
 
-    //SetPanic(true);
-    //SetPanicCallback(TemperaturePanic);
+    SetPanic(true);
+    SetPanicCallback(TemperaturePanic);
 
     return true;
 }
@@ -53,23 +55,37 @@ int32_t RunTemperatureCheck()
 {
     bool changeOccured = false;
     float temperature = GetInternalTemperature();
+
+    /**
+     * Check if internal temperature module failed to initialize
+     * and then return the ERROR int value
+     */
     if (temperature == NAN)
         return -1;
 
+    /**
+     * Overheating 
+     */
     if (temperature > 90)
     {
-        double sum = 0;
+        float sum = 0;
         const int pickSampleNum = 3;
+        /**
+         * Make sure that the cansat is overheating or the value meassured was just a spike
+         */
         for (int i = 0; i < pickSampleNum; i++)
         {
             sum += GetInternalTemperature();
             delay(100);
         }
 
+        /**
+         * Slow down to slowest speed possible
+         */
         if (sum / pickSampleNum > 90)
         {
             set_arm_clock(speeds[0]);
-            //Panic();
+            Panic();
         }
     }
     else if (temperature > 75)

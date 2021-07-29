@@ -58,6 +58,8 @@ Orion::Data::Data* ChipTemperature = NULL;
 
 
 void InitializeBetelgeuse() {
+    pinMode(28, OUTPUT);
+    digitalWrite(28, HIGH);
     BME280 = new Orion::Sensors::BME280(__I2C__);
     if (BME280 && BME280->IsInitialized()) {
         Info("BME280: State: Init");
@@ -66,6 +68,8 @@ void InitializeBetelgeuse() {
         Error("BME280: State: Not Init");
     }
 
+    pinMode(22, OUTPUT);
+    digitalWrite(22, HIGH);
     BNO055 = new Orion::Sensors::BNO055(__I2C__);
     if (BNO055 && BNO055->IsInitialized()) {
         Info("BNO055: State: Init");
@@ -125,7 +129,7 @@ void InitializeBetelgeuse() {
 
     EnvPressure = new Orion::Data::Pressure(BME280);
     if (EnvPressure && EnvPressure->IsInitialized()) {
-        Info("Pressure: State: Init");
+        Info("EnvPressure: State: Init");
     }
     else {
         Error("EnvPressure: State: Not Init");
@@ -158,7 +162,7 @@ void UpdateBetelgeuse() {
     else {
         Error("BME280: Update: Failed");
     }
-    Debug("BME280: Update: Finished");
+    Info("BME280: Update: Finished");
 
 
     Debug("BNO055: Update: Starting");
@@ -170,7 +174,7 @@ void UpdateBetelgeuse() {
     else {
         Error("BNO055: Update: Failed");
     }
-    Debug("BNO055: Update: Finished");
+    Info("BNO055: Update: Finished");
 
     Debug("MTK3339: Update: Starting");
     if (MTK3339) {
@@ -181,7 +185,7 @@ void UpdateBetelgeuse() {
     else {
         Error("MTK3339: Update: Failed");
     }
-    Debug("MTK3339: Update: Finished");
+    Info("MTK3339: Update: Finished");
 
     Debug("TeensyChipTemperature: Update: Starting");
     if (TeensyChipTemperature) {
@@ -201,11 +205,8 @@ int main(void)
     delay(1000);
     Serial.begin(9600);
 
-    delay(1000);
-    SD.begin(BUILTIN_SDCARD);
+    delay(4000);
 
-    delay(2000);
-    
     #if defined(__IMXRT1062__)
         Info("IMXRT1062: State: Init");
     #elif defined(__MK66FX1M0__)
@@ -213,15 +214,20 @@ int main(void)
     #endif
 
     delay(1000);
+
+    Info("Serial: State: Init");
+
+    delay(1000);
+    if (SD.begin(BUILTIN_SDCARD))
+        Info("SD: State: Init");
+    else
+        Error("SD: State: Not Init");
+
+    delay(1000);
     
+
     InitializeBetelgeuse();
 
-    char* message = (char*)malloc(1024);
-    if (!message) {
-        Serial.println("Can not create Message Buffer");
-        while (true)
-            __asm__ ("nop");
-    }
     while (true)
     {
         Debug("Starting Update");
@@ -233,10 +239,11 @@ int main(void)
         float envpressure = EnvPressure->Get();
         float envtemperature = EnvTemperature->Get();
         float chiptemperature = ChipTemperature->Get();
+        float latitude = Latitude->Get();
+        float longitude = Longitude->Get();
 
-        snprintf(message, 1024, "%.2f %.2f %.2f %.2f %.2f", altitude, envhumidity, envpressure, envtemperature, chiptemperature);
-        Serial.println(message);
-
+        orionout << altitude << " " << envhumidity << " " << envpressure << " " << envtemperature << " " << chiptemperature << " " << latitude << " " << longitude << Orion::Utilities::IO::endl;
+        
         delay(1000);
         yield();
     }
