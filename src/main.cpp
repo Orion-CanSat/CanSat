@@ -8,6 +8,8 @@
 // Time of creation: 2020/12/05 12:57
 //-------------------------------------------------------------------------------------------------------------------------------------------------
 
+#include <stdint.h>
+
 #ifdef ARDUINO
     #include <Arduino.h>
     #include <SD.h>
@@ -39,27 +41,30 @@
 
 #include "Debug.hpp"
 #include "main.hpp"
+#include "RF.hpp"
 
 
 extern float tempmonGetTemp(void);
 
-Orion::Sensors::Sensor* BME280 = NULL;
-Orion::Sensors::Sensor* BNO055 = NULL;
-Orion::Sensors::Sensor* MTK3339 = NULL;
-Orion::Sensors::Sensor* TeensyChipTemperature = NULL;
+static Orion::Sensors::Sensor* BME280 = NULL;
+static Orion::Sensors::Sensor* BNO055 = NULL;
+static Orion::Sensors::Sensor* MTK3339 = NULL;
+static Orion::Sensors::Sensor* TeensyChipTemperature = NULL;
 
-Orion::Data::Data* Altitude = NULL;
-Orion::Data::Data* Latitude = NULL;
-Orion::Data::Data* Longitude = NULL;
-Orion::Data::Data* EnvHumidity = NULL;
-Orion::Data::Data* EnvPressure = NULL;
-Orion::Data::Data* EnvTemperature = NULL;
-Orion::Data::Data* ChipTemperature = NULL;
+static Orion::Data::Data* Altitude = NULL;
+static Orion::Data::Data* Latitude = NULL;
+static Orion::Data::Data* Longitude = NULL;
+static Orion::Data::Data* EnvHumidity = NULL;
+static Orion::Data::Data* EnvPressure = NULL;
+static Orion::Data::Data* EnvTemperature = NULL;
+static Orion::Data::Data* ChipTemperature = NULL;
 
 
 void InitializeBetelgeuse() {
+#if defined(__IMXRT1062__)
     pinMode(28, OUTPUT);
     digitalWrite(28, HIGH);
+#endif
     BME280 = new Orion::Sensors::BME280(__I2C__);
     if (BME280 && BME280->IsInitialized()) {
         Info("BME280: State: Init");
@@ -68,8 +73,12 @@ void InitializeBetelgeuse() {
         Error("BME280: State: Not Init");
     }
 
+    delay(1000);
+
+#if defined(__IMXRT1062__)
     pinMode(22, OUTPUT);
     digitalWrite(22, HIGH);
+#endif
     BNO055 = new Orion::Sensors::BNO055(__I2C__);
     if (BNO055 && BNO055->IsInitialized()) {
         Info("BNO055: State: Init");
@@ -77,6 +86,8 @@ void InitializeBetelgeuse() {
     else {
         Error("BNO055: State: Not Init");
     }
+
+    delay(1000);
 
     MTK3339 = new Orion::Sensors::GPS::MTK3339(&Serial3);
     if (MTK3339 && MTK3339->IsInitialized()) {
@@ -86,6 +97,8 @@ void InitializeBetelgeuse() {
         Error("MTK3339: State: Not Init");
     }
 
+    delay(1000);
+
     TeensyChipTemperature = new Orion::Sensors::TeensyChipTemperature((uint8_t)10);
     if (TeensyChipTemperature && TeensyChipTemperature->IsInitialized()) {
         Info("TeensyChipTemperature: State: Init");
@@ -94,7 +107,8 @@ void InitializeBetelgeuse() {
         Error("TeensyChipTemperature: State: Not Init");
     }
 
-    
+    delay(1000);
+
     Altitude = new Orion::Data::Altitude(BME280);
     if (Altitude && Altitude->IsInitialized()) {
         Info("Altitude: State: Init");
@@ -102,6 +116,8 @@ void InitializeBetelgeuse() {
     else {
         Error("Altitude: State: Not Init");
     }
+
+    delay(1000);
 
     Latitude = new Orion::Data::Latitude(MTK3339);
     if (Latitude && Latitude->IsInitialized()) {
@@ -111,6 +127,8 @@ void InitializeBetelgeuse() {
         Error("Latitude: State: Not Init");
     }
 
+    delay(1000);
+
     Longitude = new Orion::Data::Latitude(MTK3339);
     if (Longitude && Longitude->IsInitialized()) {
         Info("Longitude: State: Init");
@@ -118,6 +136,8 @@ void InitializeBetelgeuse() {
     else {
         Error("Longitude: State: Not Init");
     }
+
+    delay(1000);
 
     EnvHumidity = new Orion::Data::Humidity(BME280);
     if (EnvHumidity && EnvHumidity->IsInitialized()) {
@@ -127,6 +147,8 @@ void InitializeBetelgeuse() {
         Error("EnvHumidity: State: Not Init");
     }
 
+    delay(1000);
+
     EnvPressure = new Orion::Data::Pressure(BME280);
     if (EnvPressure && EnvPressure->IsInitialized()) {
         Info("EnvPressure: State: Init");
@@ -135,6 +157,8 @@ void InitializeBetelgeuse() {
         Error("EnvPressure: State: Not Init");
     }
 
+    delay(1000);
+
     EnvTemperature = new Orion::Data::Temperature(BME280);
     if (EnvTemperature && EnvTemperature->IsInitialized()) {
         Info("EnvTemperature: State: Init");
@@ -142,6 +166,8 @@ void InitializeBetelgeuse() {
     else {
         Error("EnvTemperature: State: Not Init");
     }
+
+    delay(1000);
 
     ChipTemperature = new Orion::Data::Temperature(TeensyChipTemperature);
     if (ChipTemperature && ChipTemperature->IsInitialized()) {
@@ -218,31 +244,110 @@ int main(void)
     Info("Serial: State: Init");
 
     delay(1000);
+    
+    File dataFile;
+    
     if (SD.begin(BUILTIN_SDCARD))
+    {
         Info("SD: State: Init");
+
+        if (SD.exists("data"))
+            SD.remove("data");
+
+        dataFile = SD.open("data", FILE_WRITE);
+        if (dataFile) 
+            Info("Data File: State: Init");
+        else
+            Error("Data File: State: Not Init");
+    }    
     else
         Error("SD: State: Not Init");
 
     delay(1000);
-    
 
     InitializeBetelgeuse();
+
+    pinMode(LED_BUILTIN, OUTPUT);
+    digitalWrite(LED_BUILTIN, HIGH);
+
+    const int blockStartingLine = __LINE__;
+    float altitude;
+    float envhumidity;
+    float envpressure;
+    float envtemperature;
+    float chiptemperature;
+    float latitude;
+    float longitude;
+    const int blockEndngLine = __LINE__;
+
+    const uint8_t blockSize = (blockEndngLine - blockStartingLine - 1) * sizeof(float);
+    
+    uint8_t* data = (uint8_t*)malloc(230 * sizeof(uint8_t));
+    if (!data) {
+        Error("Could not allocate enough dataspace for the RF Buffer");
+        orionout.Flush();
+        while (true)
+            __asm__("nop");
+    }
+    memset(data, 0, 230 * sizeof(uint8_t));
+
+    char* sdBuffer = (char*)malloc(1024 * sizeof(char));
+    if (!sdBuffer) {
+        Error("Could not allocate enough data space for the SD Buffer");
+        orionout.Flush();
+        while (true)
+            __asm__("nop");
+    }
+    memset(sdBuffer, 0, 1024 * sizeof(char));
+    
+    uint8_t dataPos = 0;
 
     while (true)
     {
         Debug("Starting Update");
         UpdateBetelgeuse();
         Debug("Ending Update");
+        orionout.Flush();
 
-        float altitude = Altitude->Get();
-        float envhumidity = EnvHumidity->Get();
-        float envpressure = EnvPressure->Get();
-        float envtemperature = EnvTemperature->Get();
-        float chiptemperature = ChipTemperature->Get();
-        float latitude = Latitude->Get();
-        float longitude = Longitude->Get();
+        altitude = Altitude->Get();
+        envhumidity = EnvHumidity->Get();
+        envpressure = EnvPressure->Get();
+        envtemperature = EnvTemperature->Get();
+        chiptemperature = ChipTemperature->Get();
+        latitude = Latitude->Get();
+        longitude = Longitude->Get();
 
         orionout << altitude << " " << envhumidity << " " << envpressure << " " << envtemperature << " " << chiptemperature << " " << latitude << " " << longitude << Orion::Utilities::IO::endl;
+
+        if(dataPos + blockSize <= 230){
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wstrict-aliasing"
+#endif
+            *((uint32_t*)((int)data + dataPos)) = *((uint32_t*)&altitude);
+            *((uint32_t*)((int)data + dataPos + 1 * sizeof(float))) = *((uint32_t*)&envhumidity);
+            *((uint32_t*)((int)data + dataPos + 2 * sizeof(float))) = *((uint32_t*)&envpressure);
+            *((uint32_t*)((int)data + dataPos + 3 * sizeof(float))) = *((uint32_t*)&envtemperature);
+            *((uint32_t*)((int)data + dataPos + 4 * sizeof(float))) = *((uint32_t*)&chiptemperature);
+            *((uint32_t*)((int)data + dataPos + 5 * sizeof(float))) = *((uint32_t*)&latitude);
+            *((uint32_t*)((int)data + dataPos + 6 * sizeof(float))) = *((uint32_t*)&longitude);
+            dataPos += blockSize;
+
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
+        }
+        if (dataPos + blockSize > 230) {
+            // TODO: Send to RF
+
+            dataPos = 0;
+        }
+
+        if (dataFile) {
+            snprintf(sdBuffer, 1024 * sizeof(char), "%.2f %.2f %.2f %.2f %.2f %.2f %.2f", altitude, envhumidity, envpressure, envtemperature, chiptemperature, latitude, longitude);
+            dataFile.println(sdBuffer);
+            dataFile.flush();
+        }
         
         delay(1000);
         yield();
