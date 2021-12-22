@@ -15,15 +15,15 @@ We are a team composed of 12 students of the [Model High School “Evangeliki Sc
 Contibuting is a great way to help a project gain traction and take off. First and foremost you can fork the repository and start working on your own. Then you can create a pull request to merge it to our meain repository, or you can create your custom spin off of your programs. Beware you must be compilient with your license, AGPLv3.
 
 &nbsp;
-## Meet our Team (In alphabetiac order)
-|             Name             |                                   Role                                   |              Introduction              |
-| ---------------------------- | ------------------------------------------------------------------------ | -------------------------------------- |
-|        __Danae Veli__        |                  Head of Electrical Engineering                          |                                        |
-|    __Dennis Angelopoulos__   |      Head of Mechanical Engineering and Control Systems Development      |                                        |
-|     __Dimitris Balatos__     |                     Head of Software Engineering                         |                                        |
-|     __Giorgos Kaltsis__      |                         Senior Data Analyst                              |                                        |
-| __Konstantinos Kritharidis__ |                    Head of Recovery Systems                              |                                        |
-| [__Rikarnto Bariampa__](https://github.com/richardbar) | Head of Telemetry and Senior Software Engineer |                                        |
+## Meet our Team (In alphabetical order)
+|                                Name                                |                              Role                              |                                                                                                                                     Introduction                                                                                                                                    |
+| ------------------------------------------------------------------ | -------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+|                           __Danae Veli__                           |                 Head of Electrical Engineering                 |                               My name is Danae Veli and I am a student at Model High School "Evangeliki Scholi Smyrna". I am a part of team Orion II and I am in charge of the electrical design. My main duty is to design the PCBs for the project.                               |
+|   [__Dionysios Angelopoulos__](https://github.com/DennisAngelo)    | Head of Mechanical Engineering and Control Systems Development | My name is Dionysios Angelopoulos. I am a greek High School student attending Model High School “Evangeliki Scholi Smyrna”. I am the head of Mechanical Engineering in Orion II. My main duty was to 3D model the cansat and to design and tune the control system for the cansat.  |
+|           [__Jim Balatos__](https://github.com/jbalatos)           |                  Head of Software Engineering                  |                           My name is Jim Balatos. I am a greek High School student attending Model High School “Evangeliki Scholi Smyrna”. I am the head of Software Engineering in Orion II. My main duty was to write the Live Server of our mission.                             |
+|                         __Giorgos Kaltsis__                        |                       Senior Data Analyst                      |              |
+| [__Konstantinos Kritharidis__](https://github.com/konstantinosk31) |                    Head of Retrieval System                    |               My name is Konstantinos Kritharidis. I am a greek High School student attending The American College of Greece - Pierce. I am the head of the Retrieval System in Orion II. My main duty was to design and create the ram-air parachute for the CanSat.               |
+|       [__Rikarnto Bariampa__](https://github.com/richardbar)       |         Head of Telemetry and Senior Software Engineer         |               My name is Rikarnto Bariampa. I am a greek High School student attending Model High School “Evangeliki Scholi Smyrna”. I am the head of Telemetry and a Senior Software Engineer in Orion II. My main duty was to write the onboard code for the CanSat.              |
 
 &nbsp;
 ## Want to reach us?
