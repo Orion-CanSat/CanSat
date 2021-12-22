@@ -38,11 +38,13 @@
 #include <Orion/Sensors/GPS/GPS.hpp>
 #include <Orion/Sensors/GPS/MTK3339.hpp>
 #include <Orion/Utilities/IO/TTY.hpp>
+#include <Orion/Utilities/Time/Delay.hpp>
 
 #include "Debug.hpp"
 #include "main.hpp"
 #include "RF.hpp"
 
+#define BNO_RST 40
 
 extern float tempmonGetTemp(void);
 
@@ -73,9 +75,16 @@ void InitializeBetelgeuse() {
         Error("BME280: State: Not Init");
     }
 
-    delay(1000);
+    orionout.Flush();
+    Orion::Utilities::Time::Delay::DelayS(1);
 
 #if defined(__IMXRT1062__)
+    pinMode(BNO_RST, OUTPUT);
+    digitalWrite(BNO_RST, HIGH);
+    Orion::Utilities::Time::Delay::DelayMS(100);
+    digitalWrite(BNO_RST, LOW);
+    Orion::Utilities::Time::Delay::DelayMS(100);
+
     pinMode(22, OUTPUT);
     digitalWrite(22, HIGH);
 #endif
@@ -87,7 +96,8 @@ void InitializeBetelgeuse() {
         Error("BNO055: State: Not Init");
     }
 
-    delay(1000);
+    orionout.Flush();
+    Orion::Utilities::Time::Delay::DelayS(1);
 
     MTK3339 = new Orion::Sensors::GPS::MTK3339(&Serial3);
     if (MTK3339 && MTK3339->IsInitialized()) {
@@ -97,7 +107,8 @@ void InitializeBetelgeuse() {
         Error("MTK3339: State: Not Init");
     }
 
-    delay(1000);
+    orionout.Flush();
+    Orion::Utilities::Time::Delay::DelayS(1);
 
     TeensyChipTemperature = new Orion::Sensors::TeensyChipTemperature((uint8_t)10);
     if (TeensyChipTemperature && TeensyChipTemperature->IsInitialized()) {
@@ -107,7 +118,18 @@ void InitializeBetelgeuse() {
         Error("TeensyChipTemperature: State: Not Init");
     }
 
-    delay(1000);
+    orionout.Flush();
+    Orion::Utilities::Time::Delay::DelayS(1);
+
+    if (RFInit()) {
+        Info("RF: State: Init");
+    }
+    else {
+        Error("RF: State: Not Init");
+    }
+
+    orionout.Flush();
+    Orion::Utilities::Time::Delay::DelayS(1);
 
     Altitude = new Orion::Data::Altitude(BME280);
     if (Altitude && Altitude->IsInitialized()) {
@@ -117,7 +139,8 @@ void InitializeBetelgeuse() {
         Error("Altitude: State: Not Init");
     }
 
-    delay(1000);
+    orionout.Flush();
+    Orion::Utilities::Time::Delay::DelayS(1);
 
     Latitude = new Orion::Data::Latitude(MTK3339);
     if (Latitude && Latitude->IsInitialized()) {
@@ -127,7 +150,8 @@ void InitializeBetelgeuse() {
         Error("Latitude: State: Not Init");
     }
 
-    delay(1000);
+    orionout.Flush();
+    Orion::Utilities::Time::Delay::DelayS(1);
 
     Longitude = new Orion::Data::Latitude(MTK3339);
     if (Longitude && Longitude->IsInitialized()) {
@@ -137,7 +161,8 @@ void InitializeBetelgeuse() {
         Error("Longitude: State: Not Init");
     }
 
-    delay(1000);
+    orionout.Flush();
+    Orion::Utilities::Time::Delay::DelayS(1);
 
     EnvHumidity = new Orion::Data::Humidity(BME280);
     if (EnvHumidity && EnvHumidity->IsInitialized()) {
@@ -147,7 +172,8 @@ void InitializeBetelgeuse() {
         Error("EnvHumidity: State: Not Init");
     }
 
-    delay(1000);
+    orionout.Flush();
+    Orion::Utilities::Time::Delay::DelayS(1);
 
     EnvPressure = new Orion::Data::Pressure(BME280);
     if (EnvPressure && EnvPressure->IsInitialized()) {
@@ -157,7 +183,8 @@ void InitializeBetelgeuse() {
         Error("EnvPressure: State: Not Init");
     }
 
-    delay(1000);
+    orionout.Flush();
+    Orion::Utilities::Time::Delay::DelayS(1);
 
     EnvTemperature = new Orion::Data::Temperature(BME280);
     if (EnvTemperature && EnvTemperature->IsInitialized()) {
@@ -167,7 +194,8 @@ void InitializeBetelgeuse() {
         Error("EnvTemperature: State: Not Init");
     }
 
-    delay(1000);
+    orionout.Flush();
+    Orion::Utilities::Time::Delay::DelayS(1);
 
     ChipTemperature = new Orion::Data::Temperature(TeensyChipTemperature);
     if (ChipTemperature && ChipTemperature->IsInitialized()) {
@@ -190,6 +218,7 @@ void UpdateBetelgeuse() {
     }
     Info("BME280: Update: Finished");
 
+    orionout.Flush();
 
     Debug("BNO055: Update: Starting");
     if (BNO055) {
@@ -202,6 +231,8 @@ void UpdateBetelgeuse() {
     }
     Info("BNO055: Update: Finished");
 
+    orionout.Flush();
+
     Debug("MTK3339: Update: Starting");
     if (MTK3339) {
         Debug("MTK3339: Update: On Wait");
@@ -212,6 +243,8 @@ void UpdateBetelgeuse() {
         Error("MTK3339: Update: Failed");
     }
     Info("MTK3339: Update: Finished");
+
+    orionout.Flush();
 
     Debug("TeensyChipTemperature: Update: Starting");
     if (TeensyChipTemperature) {
@@ -228,10 +261,10 @@ void UpdateBetelgeuse() {
 
 int main(void)
 {
-    delay(1000);
+    Orion::Utilities::Time::Delay::DelayS(1);
     Serial.begin(9600);
 
-    delay(4000);
+    Orion::Utilities::Time::Delay::DelayS(4);
 
     #if defined(__IMXRT1062__)
         Info("IMXRT1062: State: Init");
@@ -239,11 +272,11 @@ int main(void)
         Info("MK66FX1M0: State: Init");
     #endif
 
-    delay(1000);
+    Orion::Utilities::Time::Delay::DelayS(1);
 
     Info("Serial: State: Init");
 
-    delay(1000);
+    Orion::Utilities::Time::Delay::DelayS(1);
     
     File dataFile;
     
@@ -263,9 +296,11 @@ int main(void)
     else
         Error("SD: State: Not Init");
 
-    delay(1000);
+    Orion::Utilities::Time::Delay::DelayS(1);
 
+    orionout.Flush();
     InitializeBetelgeuse();
+    orionout.Flush();
 
     pinMode(LED_BUILTIN, OUTPUT);
     digitalWrite(LED_BUILTIN, HIGH);
@@ -282,14 +317,14 @@ int main(void)
 
     const uint8_t blockSize = (blockEndngLine - blockStartingLine - 1) * sizeof(float);
     
-    uint8_t* data = (uint8_t*)malloc(230 * sizeof(uint8_t));
+    uint8_t* data = (uint8_t*)malloc(225 * sizeof(uint8_t));
     if (!data) {
         Error("Could not allocate enough dataspace for the RF Buffer");
         orionout.Flush();
         while (true)
             __asm__("nop");
     }
-    memset(data, 0, 230 * sizeof(uint8_t));
+    memset(data, 0, 225 * sizeof(uint8_t));
 
     char* sdBuffer = (char*)malloc(1024 * sizeof(char));
     if (!sdBuffer) {
@@ -319,7 +354,7 @@ int main(void)
 
         orionout << altitude << " " << envhumidity << " " << envpressure << " " << envtemperature << " " << chiptemperature << " " << latitude << " " << longitude << Orion::Utilities::IO::endl;
 
-        if(dataPos + blockSize <= 230){
+        if(dataPos + blockSize <= 225){
 #ifdef __GNUC__
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wstrict-aliasing"
@@ -337,8 +372,16 @@ int main(void)
 #pragma GCC diagnostic pop
 #endif
         }
-        if (dataPos + blockSize > 230) {
-            // TODO: Send to RF
+        if (dataPos + blockSize > 225) {
+            Debug("RF: Send: Starting");
+            orionout.Flush();
+            if (RFQueue(data, dataPos) && RFSendPacket()) {
+                Debug("RF: Send: Succeeded");
+            }
+            else {
+                Error("RF: Send: Failed");
+            }
+            Info("RF: Send: Finished");
 
             dataPos = 0;
         }
@@ -349,7 +392,6 @@ int main(void)
             dataFile.flush();
         }
         
-        delay(1000);
         yield();
     }
 }

@@ -1,6 +1,9 @@
 #include <wiring.h>
 
 #include <Orion.h>
+#include <Orion/Utilities/Time/Delay.hpp>
+
+#include "Debug.hpp"
 
 #include "internalTempController.hpp"
 
@@ -22,11 +25,16 @@ static Orion::Sensors::Sensor* _internalTempModule;
 
 void TemperaturePanic()
 {
+    // Set led to on
     pinMode(13, OUTPUT);
-    delay(30);
+    Orion::Utilities::Time::Delay::DelayMS(30);
     digitalWrite(13, HIGH);
-    delay(30);
+    Orion::Utilities::Time::Delay::DelayMS(30);
+
+    // No interrupts
     cli();
+
+    // No operations
     while (true)
         __asm__ __volatile__("nop");
 }
@@ -76,7 +84,7 @@ int32_t RunTemperatureCheck()
         for (int i = 0; i < pickSampleNum; i++)
         {
             sum += GetInternalTemperature();
-            delay(100);
+            Orion::Utilities::Time::Delay::DelayMS(100);
         }
 
         /**
@@ -84,6 +92,7 @@ int32_t RunTemperatureCheck()
          */
         if (sum / pickSampleNum > 90)
         {
+            Error("internalTempController: RunTemperatureCheck: Critical internal temperature");
             set_arm_clock(speeds[0]);
             Panic();
         }
@@ -93,13 +102,20 @@ int32_t RunTemperatureCheck()
         currentIndex = 0;
         changeOccured = true;
     }
+    /**
+     * Can pick up speed again
+     */
     else if ((temperature > 65) && (currentIndex > 0))
     {
         currentIndex--;
         changeOccured = true;
     }
+    /**
+     * Slight overheating
+     */
     else if ((temperature < 60) && (currentIndex + 1 < speedsLength))
     {
+        Info("internalTempController: RunTemperatureCheck: Overheating");
         currentIndex++;
         changeOccured = true;
     }

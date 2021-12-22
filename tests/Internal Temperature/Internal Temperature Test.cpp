@@ -15,6 +15,7 @@
 #include "Orion.h"
 
 #include "Orion/Utilities/Memory/shared_ptr.hpp"
+#include "Orion/Utilities/Time/Delay.hpp"
 
 #include "Orion/Modules/DataModules/TeensyChipTemperature.hpp"
 
@@ -41,7 +42,7 @@ int main(void)
         Serial.println(RunTemperatureCheck());
         Serial.flush();
 
-        delay(1000);
+        Orion::Utilities::Time::Delay::DelayS(1);
         yield();
     }
 }

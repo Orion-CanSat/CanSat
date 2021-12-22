@@ -3,8 +3,13 @@
 
 #include <stdint.h>
 
+#define ORION_IDENTIFIER_BE 6172833454100532736
+#define ORION_IDENTIFIER_LE 22042224515590741 // 0x55 0xAA O R I O N 0x00
+
 typedef struct {
     uint64_t OrionIdentifier;
+    uint32_t OrionPacketIdentifier;
+    uint32_t OrionPackageSize;
     uint16_t OrionNumberOfPackages;
     uint16_t OrionPacketNumber;
     uint8_t OrionData[230];    
