@@ -1,5 +1,9 @@
 # Orion II CanSat
 
+## How to compile
+Firstly you will need make and arm-none-eabi-gcc 5. Then navigate to Core/teensy4/ and delete main.cpp. After that just time `make all` or just `make`. This should automatically compile the whole program.
+
+&nbsp;
 ## Who are we?
 We are a team composed of 12 students of the [Model High School “Evangeliki Scholi Smyrna”](http://lyk-evsch-n-smyrn.att.sch.gr/wordpress/?p=1322). For the fourth consecutive time we are participating in the Panhellenic competition "[CanSat in Greece](https://cansat.gr/)", a qualifier of the Pan-European competition "[CanSats in Europe](http://www.esa.int/SPECIALS/CanSat/SEMXTDCKP6G_0.html)", organized by ESA (European Space Agency) for the last 8 years. Our team is called Orion II and our supervisor is Dr. Christos Fanidis.
 
@@ -39,3 +43,5 @@ If you have any question, please feel free to reach us in one of the following w
 &nbsp;
 ### __Q: Why did you choose to not include a Universal RF module?__
 ### __A:__ The [RadioHead Library](http://www.airspayce.com/mikem/arduino/RadioHead/) provides a good, simple and coherent way to communicate with a wide range of RF modules. That is why in our code we will be using the RadioHead Library instead of making an inhouse compatibility layer which will be time consuming and is generally not worth it.
+### __Q: Why make two makefiles?__
+### __A:__ The two makefiles are responsible for compiling the program for the Teensy 3.6 and Teensy 4.1 as we would like to still support the Teensy used in the Greek competition of "[CanSat in Greece](https://cansat.gr/)". It does not add or remove any functionality. Some pin numbers might differ but the Core functionality stays the same.

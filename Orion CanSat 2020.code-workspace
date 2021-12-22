@@ -21,7 +21,7 @@
 			"MS-vsliveshare.vsliveshare",
 			"donjayamanne.githistory",
 			"ms-vscode.cpptools",
-			"ms-vscode.csharp",
+			"ms-dotnettools.csharp",
 			"aaron-bond.better-comments"
 		]
 	}
