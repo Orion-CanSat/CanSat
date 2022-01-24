@@ -204,6 +204,8 @@ void InitializeBetelgeuse() {
     else {
         Error("ChipTemperature: State: Not Init");
     }
+
+    orionout.Flush();
 }
 
 void UpdateBetelgeuse() {
@@ -256,6 +258,8 @@ void UpdateBetelgeuse() {
         Error("TeensyChipTemperature: Update: Failed");
     }
     Info("TeensyChipTemperature: Update: Finished");
+    
+    orionout.Flush();
 }
 
 
@@ -300,8 +304,7 @@ int main(void)
 
     orionout.Flush();
     InitializeBetelgeuse();
-    orionout.Flush();
-    
+
     pinMode(LED_BUILTIN, OUTPUT);
     digitalWrite(LED_BUILTIN, HIGH);
 
